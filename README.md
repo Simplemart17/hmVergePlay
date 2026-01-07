@@ -1,77 +1,86 @@
-# Welcome to your new ignited app!
+# HMVerge Play
 
-> The latest and greatest boilerplate for Infinite Red opinions
+HMVerge Play is a premium, high-performance IPTV application built with React Native and Expo. Designed for a seamless entertainment experience, it provides a powerful and intuitive interface for streaming Live TV, Movies, and Series from multiple providers.
 
-This is the boilerplate that [Infinite Red](https://infinite.red) uses as a way to test bleeding-edge changes to our React Native stack.
+## 🚀 Features
 
-- [Quick start documentation](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/Boilerplate.md)
-- [Full documentation](https://github.com/infinitered/ignite/blob/master/docs/README.md)
+-   **Dual Source Support**: Support for both **Xtream Codes API** and **M3U Playlists**.
+-   **Multi-Playlist Management**: Add, manage, and switch between multiple IPTV service providers effortlessly.
+-   **Live TV & EPG**: A full-featured Electronic Program Guide (EPG) to browse schedules and view current programming.
+-   **VOD & Series**: Dedicated sections for Movies and Television Series with organized categories.
+-   **Favorites**: One-tap access to your most-watched channels and content.
+-   **Premium Video Player**: High-performance playback with support for gestures, brightness/volume controls, and orientation locking.
+-   **Modern UI/UX**: A sleek, dark-themed interface utilizing glassmorphism, smooth animations, and a responsive layout.
+-   **Persistent Storage**: Fast local caching of your playlists and settings using MMKV.
 
-## Getting Started
+## 🛠️ Technology Stack
 
+-   **Framework**: [React Native](https://reactnative.dev/) with [Expo](https://expo.dev/)
+-   **State Management**: [MobX State Tree (MST)](https://github.com/mobxjs/mobx-state-tree)
+-   **Navigation**: [React Navigation](https://reactnavigation.org/)
+-   **Styling**: Custom theme system based on [Ignite](https://github.com/infinitered/ignite)
+-   **Video**: [react-native-video](https://github.com/react-native-video/react-native-video)
+-   **Storage**: [react-native-mmkv](https://github.com/mrousavy/react-native-mmkv)
+
+## 📦 Getting Started
+
+### Prerequisites
+
+-   [Node.js](https://nodejs.org/) (v20 or newer)
+-   [Yarn](https://yarnpkg.com/)
+-   [Expo Go](https://expo.dev/client) app on your mobile device (for development) or an Android/iOS emulator.
+
+### Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone <repository-url>
+    cd hmVergePlay
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    yarn install
+    ```
+
+3.  **Start the development server**:
+    ```bash
+    yarn start
+    ```
+
+4.  **Run on a device/emulator**:
+    -   Press `a` for Android
+    -   Press `i` for iOS
+    -   Or scan the QR code with the Expo Go app.
+
+## 📱 Build Instructions
+
+The project uses [Expo Application Services (EAS)](https://expo.dev/eas) for builds.
+
+### Development Builds
+To create a development build for your local device or simulator:
 ```bash
-yarn install
-yarn start
+yarn build:ios:sim      # iOS Simulator
+yarn build:android:sim  # Android Emulator
 ```
 
-To make things work on your local simulator, or on your phone, you need first to [run `eas build`](https://github.com/infinitered/ignite/blob/master/docs/expo/EAS.md). We have many shortcuts on `package.json` to make it easier:
-
+### Production Builds
+To generate production-ready binaries:
 ```bash
-yarn build:ios:sim # build for ios simulator
-yarn build:ios:device # build for ios device
-yarn build:ios:prod # build for ios device
+yarn build:ios:prod
+yarn build:android:prod
 ```
 
-### `./assets` directory
+## 📂 Project Structure
 
-This directory is designed to organize and store various assets, making it easy for you to manage and use them in your application. The assets are further categorized into subdirectories, including `icons` and `images`:
+-   `app/components`: Reusable UI components.
+-   `app/models`: State management models and stores (MobX State Tree).
+-   `app/navigators`: Application navigation and routing configuration.
+-   `app/screens`: Primary application screens (Login, Playlist Selection, Player, etc.).
+-   `app/services`: API services for fetching IPTV data.
+-   `app/theme`: Design tokens, colors, and typography.
+-   `assets/`: Images, icons, and fonts.
 
-```tree
-assets
-├── icons
-└── images
-```
+---
 
-**icons**
-This is where your icon assets will live. These icons can be used for buttons, navigation elements, or any other UI components. The recommended format for icons is PNG, but other formats can be used as well.
-
-Ignite comes with a built-in `Icon` component. You can find detailed usage instructions in the [docs](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/app/components/Icon.md).
-
-**images**
-This is where your images will live, such as background images, logos, or any other graphics. You can use various formats such as PNG, JPEG, or GIF for your images.
-
-Another valuable built-in component within Ignite is the `AutoImage` component. You can find detailed usage instructions in the [docs](https://github.com/infinitered/ignite/blob/master/docs/Components-AutoImage.md).
-
-How to use your `icon` or `image` assets:
-
-```typescript
-import { Image } from 'react-native';
-
-const MyComponent = () => {
-  return (
-    <Image source={require('assets/images/my_image.png')} />
-  );
-};
-```
-
-## Running Maestro end-to-end tests
-
-Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
-
-## Next Steps
-
-### Ignite Cookbook
-
-[Ignite Cookbook](https://ignitecookbook.com/) is an easy way for developers to browse and share code snippets (or “recipes”) that actually work.
-
-### Upgrade Ignite boilerplate
-
-Read our [Upgrade Guide](https://ignitecookbook.com/docs/recipes/UpdatingIgnite) to learn how to upgrade your Ignite project.
-
-## Community
-
-⭐️ Help us out by [starring on GitHub](https://github.com/infinitered/ignite), filing bug reports in [issues](https://github.com/infinitered/ignite/issues) or [ask questions](https://github.com/infinitered/ignite/discussions).
-
-💬 Join us on [Slack](https://join.slack.com/t/infiniteredcommunity/shared_invite/zt-1f137np4h-zPTq_CbaRFUOR_glUFs2UA) to discuss.
-
-📰 Make our Editor-in-chief happy by [reading the React Native Newsletter](https://reactnativenewsletter.com/).
+Built with ❤️ by Martins Aloba.
