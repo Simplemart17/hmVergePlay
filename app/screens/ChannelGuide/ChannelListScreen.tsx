@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from "react"
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   ImageStyle,
@@ -13,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { observer } from "mobx-react-lite"
 
-import { capitalizeFirstLetter } from "@/utils/fortmatString"
+import { capitalizeFirstLetter } from "@/utils/formatString"
 
 import { Button } from "../../components/Button"
 import { PressableIcon } from "../../components/Icon"
@@ -26,7 +27,7 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> { }
+interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> {}
 
 export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function ChannelListScreen({
   navigation,
@@ -41,7 +42,8 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     numColumns = 2 // Portrait Tablet
   }
 
-  const { channelStore, authenticationStore, favoritesStore, settingsStore } = useStores()
+  const { channelStore, authenticationStore, favoritesStore, settingsStore, downloadStore } =
+    useStores()
   const { themed, theme } = useAppTheme()
   const { category } = route.params || ({} as { category?: string })
   const [searchQuery, setSearchQuery] = useState("")
@@ -122,9 +124,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
   const channels =
     authenticationStore.authMethod === "m3u"
       ? channelStore.rootStore.m3uStore.getChannelsByType(
-        channelStore.selectedContentType,
-        category === "all" ? undefined : category || "",
-      )
+          channelStore.selectedContentType,
+          category === "all" ? undefined : category || "",
+        )
       : channelStore.hasFetchedAllChannels
         ? category === "all"
           ? channelStore.channels
@@ -160,6 +162,44 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
       favoritesStore.toggleM3UFavorite(channel)
     } else {
       favoritesStore.toggleXtreamFavorite(channel)
+    }
+  }
+
+  const handleDownload = (channel: any) => {
+    const id =
+      channel.stream_id?.toString() ||
+      channel.series_id?.toString() ||
+      channel.id ||
+      channel.url ||
+      Math.random().toString()
+
+    if (downloadStore.isDownloaded(id)) {
+      Alert.alert("Already Downloaded", "This content is already available offline.")
+      return
+    }
+
+    const streamUrl =
+      channel.stream_url ||
+      channel.url ||
+      (authenticationStore.authMethod === "m3u" ? channel.url : "")
+
+    if (!streamUrl) {
+      Alert.alert("Error", "Could not find a valid stream URL for this content.")
+      return
+    }
+
+    const download = downloadStore.addDownload(
+      id,
+      channel.name || channel.title,
+      streamUrl,
+      channelStore.selectedContentType === "series" ? "series" : "vod",
+      channel,
+      channel.stream_icon || channel.logo || channel.cover,
+    )
+
+    if (download) {
+      downloadStore.startDownload(download.id)
+      Alert.alert("Download Started", "You can track the progress in the Downloads screen.")
     }
   }
 
@@ -216,6 +256,36 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
             size={24}
           />
         </TouchableOpacity>
+
+        {(channelStore.selectedContentType === "vod" ||
+          channelStore.selectedContentType === "series") && (
+          <TouchableOpacity onPress={() => handleDownload(item)} style={themed($favoriteIcon)}>
+            <Ionicons
+              name={
+                downloadStore.isDownloaded(
+                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
+                )
+                  ? "checkmark-circle"
+                  : downloadStore.getDownload(
+                        item.stream_id?.toString() ||
+                          item.series_id?.toString() ||
+                          item.id ||
+                          item.url,
+                      )?.status === "downloading"
+                    ? "cloud-download"
+                    : "cloud-download-outline"
+              }
+              color={
+                downloadStore.isDownloaded(
+                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
+                )
+                  ? theme.colors.palette.secondary500
+                  : theme.colors.palette.primary500
+              }
+              size={24}
+            />
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     )
   }

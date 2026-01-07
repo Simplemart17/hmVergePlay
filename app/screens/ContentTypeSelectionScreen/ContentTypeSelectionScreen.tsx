@@ -197,6 +197,12 @@ export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = o
                 color={theme.colors.palette.primary300}
               />
               <ActionButton
+                text="Downloads"
+                icon="cloud-download-outline"
+                onPress={() => navigation.navigate("Downloads")}
+                color={theme.colors.palette.secondary500}
+              />
+              <ActionButton
                 text="Exit"
                 icon="log-out-outline"
                 onPress={handleExit}
