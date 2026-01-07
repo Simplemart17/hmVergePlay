@@ -83,7 +83,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
           channelStore.selectedContentType === "radio"
 
         if (isLive) {
-          streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}`
+          const extension =
+            channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
+          streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
         } else if (channelStore.selectedContentType === "vod") {
           const extension = channel.container_extension || "mp4"
           streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
