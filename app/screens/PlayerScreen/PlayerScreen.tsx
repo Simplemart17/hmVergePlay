@@ -9,7 +9,7 @@ import { useStores } from "../../models/helpers/useStores"
 import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { colors } from "../../theme/colors"
 
-interface PlayerScreenProps extends AppStackScreenProps<"Player"> { }
+interface PlayerScreenProps extends AppStackScreenProps<"Player"> {}
 
 export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScreen({
   route,
@@ -53,6 +53,8 @@ export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScree
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
         initialAspectRatio={settingsStore.aspectRatio as any}
+        userAgent={settingsStore.userAgent}
+        referrer={settingsStore.referrer}
         onBack={() => navigation.goBack()}
         onError={(e) => {
           console.error(e)

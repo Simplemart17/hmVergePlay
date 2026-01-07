@@ -29,6 +29,8 @@ interface VideoPlayerProps {
   isFavorite?: boolean
   onToggleFavorite?: () => void
   initialAspectRatio?: "default" | "16:9" | "16:10" | "4:3" | "fill"
+  userAgent?: string
+  referrer?: string
 }
 
 type AspectRatio = "default" | "16:9" | "16:10" | "4:3" | "fill"
@@ -44,6 +46,8 @@ export const VideoPlayer = ({
   isFavorite,
   onToggleFavorite,
   initialAspectRatio = "default",
+  userAgent,
+  referrer,
 }: VideoPlayerProps) => {
   const videoRef = useRef<VideoRef>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -262,7 +266,13 @@ export const VideoPlayer = ({
         <View style={styles.videoContainer}>
           <Video
             ref={videoRef}
-            source={{ uri: source }}
+            source={{
+              uri: source,
+              headers: {
+                ...(userAgent ? { "User-Agent": userAgent } : {}),
+                ...(referrer ? { "Referrer": referrer } : {}),
+              },
+            }}
             style={getVideoStyle()}
             onLoadStart={() => setIsLoading(true)}
             onLoad={handleLoad}

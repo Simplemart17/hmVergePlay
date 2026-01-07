@@ -7,6 +7,7 @@ import { Button } from "../components/Button"
 import { ListItem } from "../components/ListItem"
 import { Screen } from "../components/Screen"
 import { Text } from "../components/Text"
+import { TextField } from "../components/TextField"
 import { Switch } from "../components/Toggle/Switch"
 import { useStores } from "../models/helpers/useStores"
 import { AppStackScreenProps } from "../navigators/navigationTypes"
@@ -75,6 +76,47 @@ export const SettingsScreen: FC<SettingsScreenProps> = observer(function Setting
       { text: "None (0)", onPress: () => settingsStore.setEpgTimeshift(0) },
       { text: "+1 Hour", onPress: () => settingsStore.setEpgTimeshift(1) },
       { text: "+2 Hours", onPress: () => settingsStore.setEpgTimeshift(2) },
+      { text: "Cancel", style: "cancel" },
+    ])
+  }
+  const handleUserAgentPreset = () => {
+    Alert.alert("Select User-Agent", "Choose a common User-Agent string.", [
+      {
+        text: "VLC Media Player",
+        onPress: () => settingsStore.setUserAgent("VLC/3.0.18 LibVLC/3.0.18"),
+      },
+      {
+        text: "IPTV Smarters",
+        onPress: () => settingsStore.setUserAgent("IPTVSmartersPro"),
+      },
+      {
+        text: "Chrome (Windows)",
+        onPress: () =>
+          settingsStore.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          ),
+      },
+      {
+        text: "Safari (Mac)",
+        onPress: () =>
+          settingsStore.setUserAgent(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+          ),
+      },
+      { text: "Cancel", style: "cancel" },
+    ])
+  }
+
+  const handleReferrerPreset = () => {
+    Alert.alert("Select Referrer", "Choose a common Referrer logic or generic URL.", [
+      {
+        text: "Generic Google",
+        onPress: () => settingsStore.setReferrer("https://www.google.com/"),
+      },
+      {
+        text: "Generic Bing",
+        onPress: () => settingsStore.setReferrer("https://www.bing.com/"),
+      },
       { text: "Cancel", style: "cancel" },
     ])
   }
@@ -198,6 +240,52 @@ export const SettingsScreen: FC<SettingsScreenProps> = observer(function Setting
       </View>
 
       <View style={themed($section)}>
+        <Text text="Advanced Network" preset="subheading" style={themed($sectionTitle)} />
+        <View style={themed($connectedCard)}>
+          <View style={themed($inputRow)}>
+            <TextField
+              label="User-Agent"
+              value={settingsStore.userAgent}
+              onChangeText={(v) => settingsStore.setUserAgent(v)}
+              placeholder="e.g. VLC/3.0.0"
+              containerStyle={themed($inputContainer)}
+              RightAccessory={() => (
+                <Button
+                  text="Presets"
+                  preset="reversed"
+                  style={$presetButton}
+                  textStyle={$presetButtonText}
+                  onPress={handleUserAgentPreset}
+                />
+              )}
+            />
+          </View>
+          <View style={themed($inputRowLast)}>
+            <TextField
+              label="Referrer"
+              value={settingsStore.referrer}
+              onChangeText={(v) => settingsStore.setReferrer(v)}
+              placeholder="e.g. http://example.com/"
+              containerStyle={themed($inputContainer)}
+              RightAccessory={() => (
+                <Button
+                  text="Presets"
+                  preset="reversed"
+                  style={$presetButton}
+                  textStyle={$presetButtonText}
+                  onPress={handleReferrerPreset}
+                />
+              )}
+            />
+          </View>
+        </View>
+        <Text
+          text="Custom headers can help bypass some geo-blocking or restrictions. A VPN application is recommended for full geo-unblocking."
+          style={themed($helperText)}
+        />
+      </View>
+
+      <View style={themed($section)}>
         <Text text="About" preset="subheading" style={themed($sectionTitle)} />
         <View style={themed($connectedCard)}>
           <ListItem
@@ -280,7 +368,9 @@ const $listItemNoBorder: ThemedStyle<ViewStyle> = () => ({
 const $iconContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   marginRight: spacing.md,
   width: 32,
+  height: 32,
   alignItems: "center",
+  justifyContent: "center",
 })
 
 const $valueContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
@@ -293,3 +383,35 @@ const $valueText: ThemedStyle<TextStyle> = ({ colors }) => ({
   color: colors.textDim,
   fontSize: 14,
 })
+
+const $inputRow: ThemedStyle<ViewStyle> = ({ colors }) => ({
+  borderBottomWidth: 1,
+  borderBottomColor: colors.borderLite,
+  padding: 16,
+})
+
+const $inputRowLast: ThemedStyle<ViewStyle> = () => ({
+  padding: 16,
+})
+
+const $inputContainer: ThemedStyle<ViewStyle> = () => ({
+  marginBottom: 0,
+})
+
+const $helperText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  marginTop: spacing.md,
+  paddingHorizontal: spacing.md,
+  color: colors.textDim,
+  fontSize: 12,
+  lineHeight: 18,
+})
+
+const $presetButton: ViewStyle = {
+  minHeight: 30,
+  paddingVertical: 4,
+  paddingHorizontal: 8,
+}
+
+const $presetButtonText: TextStyle = {
+  fontSize: 12,
+}

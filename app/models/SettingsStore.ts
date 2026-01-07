@@ -11,6 +11,8 @@ export const SettingsStoreModel = types
     epgTimeshift: types.optional(types.number, 0),
     showAdultContent: types.optional(types.boolean, false),
     autoplay: types.optional(types.boolean, true),
+    userAgent: types.optional(types.string, ""),
+    referrer: types.optional(types.string, ""),
   })
   .actions((self) => ({
     setStreamFormat(format: "ts" | "m3u8") {
@@ -27,6 +29,12 @@ export const SettingsStoreModel = types
     },
     setAutoplay(value: boolean) {
       self.autoplay = value
+    },
+    setUserAgent(value: string) {
+      self.userAgent = value
+    },
+    setReferrer(value: string) {
+      self.referrer = value
     },
   }))
 
