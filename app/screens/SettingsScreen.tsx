@@ -7,6 +7,7 @@ import { Button } from "../components/Button"
 import { ListItem } from "../components/ListItem"
 import { Screen } from "../components/Screen"
 import { Text } from "../components/Text"
+import { Switch } from "../components/Toggle/Switch"
 import { useStores } from "../models/helpers/useStores"
 import { AppStackScreenProps } from "../navigators/navigationTypes"
 import { useAppTheme } from "../theme/context"
@@ -36,6 +37,45 @@ export const SettingsScreen: FC<SettingsScreenProps> = observer(function Setting
         text: "Cancel",
         style: "cancel",
       },
+    ])
+  }
+
+  const handleAspectRatioPress = () => {
+    Alert.alert(
+      "Default Aspect Ratio",
+      "Choose the default video scaling mode. You can also change this during playback.",
+      [
+        {
+          text: "Default (Contain)",
+          onPress: () => settingsStore.setAspectRatio("default"),
+          style: settingsStore.aspectRatio === "default" ? "default" : "default",
+        },
+        {
+          text: "Fill Screen (Crop)",
+          onPress: () => settingsStore.setAspectRatio("fill"),
+          style: settingsStore.aspectRatio === "fill" ? "default" : "default",
+        },
+        {
+          text: "Stretch",
+          onPress: () => settingsStore.setAspectRatio("16:9"), // Using 16:9 as proxy for stretch/fill width often
+          style: settingsStore.aspectRatio === "16:9" ? "default" : "default",
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+    )
+  }
+
+  const handleEpgTimeshiftPress = () => {
+    Alert.alert("EPG Timeshift", "Adjust the program guide time offset (in hours).", [
+      { text: "-2 Hours", onPress: () => settingsStore.setEpgTimeshift(-2) },
+      { text: "-1 Hour", onPress: () => settingsStore.setEpgTimeshift(-1) },
+      { text: "None (0)", onPress: () => settingsStore.setEpgTimeshift(0) },
+      { text: "+1 Hour", onPress: () => settingsStore.setEpgTimeshift(1) },
+      { text: "+2 Hours", onPress: () => settingsStore.setEpgTimeshift(2) },
+      { text: "Cancel", style: "cancel" },
     ])
   }
 
@@ -82,6 +122,77 @@ export const SettingsScreen: FC<SettingsScreenProps> = observer(function Setting
             }
             onPress={handleStreamFormatPress}
             style={themed($listItem)}
+          />
+
+          <ListItem
+            text="Default Aspect Ratio"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons name="resize-outline" size={24} color={theme.colors.palette.primary500} />
+              </View>
+            }
+            RightComponent={
+              <View style={themed($valueContainer)}>
+                <Text
+                  text={
+                    settingsStore.aspectRatio === "default"
+                      ? "Default"
+                      : settingsStore.aspectRatio === "fill"
+                        ? "Fill"
+                        : "Stretch"
+                  }
+                  style={themed($valueText)}
+                />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textDim} />
+              </View>
+            }
+            onPress={handleAspectRatioPress}
+            style={themed($listItem)}
+          />
+
+          <ListItem
+            text="Adult Content"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons
+                  name="eye-off-outline"
+                  size={24}
+                  color={theme.colors.palette.primary500}
+                />
+              </View>
+            }
+            RightComponent={
+              <Switch
+                value={settingsStore.showAdultContent}
+                onValueChange={(v) => settingsStore.setShowAdultContent(v)}
+              />
+            }
+            style={themed($listItem)}
+          />
+
+          <ListItem
+            text="EPG Timeshift"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons name="time-outline" size={24} color={theme.colors.palette.primary500} />
+              </View>
+            }
+            RightComponent={
+              <View style={themed($valueContainer)}>
+                <Text
+                  text={`${
+                    settingsStore.epgTimeshift > 0 ? "+" : ""
+                  }${settingsStore.epgTimeshift} hrs`}
+                  style={themed($valueText)}
+                />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textDim} />
+              </View>
+            }
+            onPress={handleEpgTimeshiftPress}
+            style={themed($listItemNoBorder)}
           />
         </View>
       </View>

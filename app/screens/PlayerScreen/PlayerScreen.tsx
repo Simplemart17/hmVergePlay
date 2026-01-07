@@ -9,19 +9,19 @@ import { useStores } from "../../models/helpers/useStores"
 import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { colors } from "../../theme/colors"
 
-interface PlayerScreenProps extends AppStackScreenProps<"Player"> {}
+interface PlayerScreenProps extends AppStackScreenProps<"Player"> { }
 
 export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScreen({
   route,
   navigation,
 }) {
   const { url, title, isLive, channel } = route.params
-  const { favoritesStore, authenticationStore } = useStores()
+  const { favoritesStore, authenticationStore, settingsStore } = useStores()
   const [hasError, setHasError] = useState(false)
 
   const isFavorite =
     authenticationStore.authMethod === "m3u"
-      ? favoritesStore.isM3UFavorite(channel?.id || url) // fallback to url as ID if channel missing (unlikely)
+      ? favoritesStore.isM3UFavorite(channel?.id || url)
       : favoritesStore.isXtreamFavorite(channel?.stream_id)
 
   const toggleFavorite = () => {
@@ -52,6 +52,7 @@ export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScree
         isLive={isLive}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
+        initialAspectRatio={settingsStore.aspectRatio as any}
         onBack={() => navigation.goBack()}
         onError={(e) => {
           console.error(e)
