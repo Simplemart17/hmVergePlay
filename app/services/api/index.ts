@@ -7,11 +7,9 @@
  */
 import { ApiResponse, ApisauceInstance, create } from "apisauce"
 
-import Config from "@/config"
-import type { EpisodeItem } from "@/services/api/types"
-
 import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
-import type { ApiConfig, ApiFeedResponse } from "./types"
+import type { ApiConfig, ApiFeedResponse, EpisodeItem } from "./types"
+import Config from "../../config"
 
 /**
  * Configuring the apisauce instance.
