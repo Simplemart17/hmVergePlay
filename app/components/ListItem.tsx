@@ -225,7 +225,8 @@ const $textStyle: ThemedStyle<TextStyle> = ({ spacing }) => ({
 })
 
 const $touchableStyle: ViewStyle = {
-  alignItems: "flex-start",
+  flexDirection: "row",
+  alignItems: "center",
 }
 
 const $iconContainer: ViewStyle = {

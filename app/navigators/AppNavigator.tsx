@@ -15,6 +15,7 @@ import { useStores } from "../models/helpers/useStores"
 import { CategoryListScreen } from "../screens/ChannelGuide/CategoryListScreen"
 import { ChannelListScreen } from "../screens/ChannelGuide/ChannelListScreen"
 import { ContentTypeSelectionScreen } from "../screens/ContentTypeSelectionScreen/ContentTypeSelectionScreen"
+import { DownloadsScreen } from "../screens/DownloadsScreen"
 import { ErrorBoundary } from "../screens/ErrorScreen/ErrorBoundary"
 import { FavoritesScreen } from "../screens/FavoritesScreen/FavoritesScreen"
 import { LoginScreen } from "../screens/LoginScreen"
@@ -65,6 +66,7 @@ const AppStack = observer(() => {
           <Stack.Screen name="Favorites" component={FavoritesScreen} />
           <Stack.Screen name="Player" component={PlayerScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="Downloads" component={DownloadsScreen} />
         </Stack.Group>
       ) : (
         <Stack.Group>

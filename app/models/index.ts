@@ -1,5 +1,6 @@
 export * from "./AuthenticationStore"
 export * from "./ChannelStore"
+export * from "./DownloadStore"
 export * from "./M3UStore"
 export * from "./FavoritesStore"
 export * from "./PlaylistStore"
