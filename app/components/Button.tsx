@@ -8,13 +8,12 @@ import {
   ViewStyle,
 } from "react-native"
 
-import { useAppTheme } from "@/theme/context"
-import { $styles } from "@/theme/styles"
-import type { ThemedStyle, ThemedStyleArray } from "@/theme/types"
-
 import { Text, TextProps } from "./Text"
+import { useAppTheme } from "../theme/context"
+import { $styles } from "../theme/styles"
+import type { ThemedStyle, ThemedStyleArray } from "../theme/types"
 
-type Presets = "default" | "filled" | "reversed"
+type Presets = "default" | "filled" | "reversed" | "secondary"
 
 export interface ButtonAccessoryProps {
   style: StyleProp<any>
@@ -118,6 +117,7 @@ export function Button(props: ButtonProps) {
   } = props
 
   const { themed } = useAppTheme()
+  // const scale = useMemo(() => new Animated.Value(1), [])
 
   const preset: Presets = props.preset ?? "default"
   /**
@@ -180,7 +180,7 @@ export function Button(props: ButtonProps) {
 
 const $baseViewStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   minHeight: 56,
-  borderRadius: 4,
+  borderRadius: 12,
   justifyContent: "center",
   alignItems: "center",
   paddingVertical: spacing.sm,
@@ -213,36 +213,44 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
     $baseViewStyle,
     ({ colors }) => ({
       borderWidth: 1,
-      borderColor: colors.palette.neutral400,
-      backgroundColor: colors.palette.neutral100,
+      borderColor: colors.borderLite,
+      backgroundColor: colors.surface,
     }),
   ],
   filled: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({ backgroundColor: colors.palette.neutral300 }),
+    ({ colors }) => ({ backgroundColor: colors.surfaceHighlight }),
   ],
-  reversed: [
+  reversed: [$styles.row, $baseViewStyle, ({ colors }) => ({ backgroundColor: colors.tint })],
+  secondary: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({ backgroundColor: colors.palette.neutral800 }),
+    ({ colors }) => ({
+      borderWidth: 1,
+      borderColor: colors.tint,
+      backgroundColor: "transparent",
+    }),
   ],
 }
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
-  default: [$baseTextStyle],
-  filled: [$baseTextStyle],
-  reversed: [$baseTextStyle, ({ colors }) => ({ color: colors.palette.neutral100 })],
+  default: [$baseTextStyle, ({ colors }) => ({ color: colors.text })],
+  filled: [$baseTextStyle, ({ colors }) => ({ color: colors.text })],
+  reversed: [$baseTextStyle, ({ colors }) => ({ color: colors.palette.neutral900 })], // Text on Accent
+  secondary: [$baseTextStyle, ({ colors }) => ({ color: colors.tint })],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
-  default: ({ colors }) => ({ backgroundColor: colors.palette.neutral200 }),
-  filled: ({ colors }) => ({ backgroundColor: colors.palette.neutral400 }),
-  reversed: ({ colors }) => ({ backgroundColor: colors.palette.neutral700 }),
+  default: ({ colors }) => ({ backgroundColor: colors.surfaceHighlight }),
+  filled: ({ colors }) => ({ backgroundColor: colors.border }),
+  reversed: ({ colors }) => ({ backgroundColor: colors.palette.primary600 }),
+  secondary: ({ colors }) => ({ backgroundColor: colors.glass }),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<TextStyle>> = {
   default: () => ({ opacity: 0.9 }),
   filled: () => ({ opacity: 0.9 }),
   reversed: () => ({ opacity: 0.9 }),
+  secondary: () => ({ opacity: 0.9 }),
 }
