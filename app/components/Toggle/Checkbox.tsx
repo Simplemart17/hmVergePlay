@@ -1,9 +1,8 @@
 import { useEffect, useRef, useCallback } from "react"
 import { Image, ImageStyle, Animated, StyleProp, View, ViewStyle } from "react-native"
 
-import { useAppTheme } from "@/theme/context"
-import { $styles } from "@/theme/styles"
-
+import { useAppTheme } from "../../theme/context"
+import { $styles } from "../../theme/styles"
 import { iconRegistry, IconTypes } from "../Icon"
 import { $inputOuterBase, BaseToggleInputProps, ToggleProps, Toggle } from "./Toggle"
 
@@ -82,7 +81,7 @@ function CheckboxInput(props: CheckboxInputProps) {
   const iconTintColor = [
     disabled && colors.palette.neutral600,
     status === "error" && colors.error,
-    colors.palette.accent100,
+    colors.palette.neutral100,
   ].filter(Boolean)[0]
 
   return (
