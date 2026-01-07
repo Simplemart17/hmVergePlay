@@ -38,6 +38,7 @@ export const LoginScreen: FC<LoginScreenProps> = observer(function LoginScreen(_
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [m3uUrl, setM3UUrl] = useState("")
+  const [playlistName, setPlaylistName] = useState("")
   const [isAuthPasswordHidden, setIsAuthPasswordHidden] = useState(true)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [loginMethod, setLoginMethod] = useState<"xtream" | "m3u">("xtream")
@@ -54,10 +55,10 @@ export const LoginScreen: FC<LoginScreenProps> = observer(function LoginScreen(_
 
     if (loginMethod === "xtream") {
       if (!serverUrl || !username || !password) return
-      await authenticationStore.login(serverUrl, username, password)
+      await authenticationStore.login(serverUrl, username, password, playlistName)
     } else {
       if (!m3uUrl) return
-      await authenticationStore.loginM3U(m3uUrl)
+      await authenticationStore.loginM3U(m3uUrl, playlistName)
     }
 
     // If successful, and we were adding a playlist, we should navigate to ContentTypeSelection
@@ -154,6 +155,17 @@ export const LoginScreen: FC<LoginScreenProps> = observer(function LoginScreen(_
               />
             </TouchableOpacity>
           </View>
+
+          <TextField
+            value={playlistName}
+            onChangeText={setPlaylistName}
+            containerStyle={themed($textField)}
+            autoCapitalize="words"
+            autoComplete="off"
+            autoCorrect={false}
+            label="Playlist Name (Optional)"
+            placeholder="E.g., My Living Room TV"
+          />
 
           {loginMethod === "xtream" ? (
             <View>

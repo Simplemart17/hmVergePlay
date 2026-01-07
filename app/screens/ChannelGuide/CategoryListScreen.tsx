@@ -46,23 +46,59 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
 
     useEffect(() => {
       if (channelStore.rootStore.authenticationStore.authMethod === "m3u") {
-        setTotalCount(channelStore.rootStore.m3uStore.channels.length)
+        setTotalCount(
+          channelStore.rootStore.m3uStore.getChannelsByType(channelStore.selectedContentType)
+            .length,
+        )
       } else {
         setTotalCount(channelStore.totalChannelCount)
       }
     }, [
       channelStore.totalChannelCount,
-      channelStore.rootStore.m3uStore.channels.length,
+      channelStore.rootStore.m3uStore.channels.length, // Keep as dependency for updates
       channelStore.rootStore.authenticationStore.authMethod,
+      channelStore.selectedContentType,
     ])
 
-    const categories =
-      channelStore.rootStore.authenticationStore.authMethod === "m3u"
-        ? channelStore.rootStore.m3uStore.categories.map((c: string) => ({
-            category_id: c,
-            category_name: c,
-          }))
-        : channelStore.categories
+    const getAllCategoryName = () => {
+      switch (channelStore.selectedContentType) {
+        case "live":
+        case "radio":
+          return "All Channels"
+        case "vod":
+          return "All Movies"
+        case "series":
+          return "All Series"
+        default:
+          return "All Channels"
+      }
+    }
+
+    const getCountLabel = (count: number) => {
+      switch (channelStore.selectedContentType) {
+        case "live":
+        case "radio":
+          return `${count} Channels`
+        case "vod":
+          return `${count} Movies`
+        case "series":
+          return `${count} Series`
+        default:
+          return `${count} Channels`
+      }
+    }
+
+    const categories = [
+      { category_id: "all", category_name: getAllCategoryName() },
+      ...(channelStore.rootStore.authenticationStore.authMethod === "m3u"
+        ? channelStore.rootStore.m3uStore
+            .getCategoriesByType(channelStore.selectedContentType)
+            .map((c: string) => ({
+              category_id: c,
+              category_name: c,
+            }))
+        : channelStore.categories),
+    ]
 
     const getHeadingText = () => {
       const baseText = (() => {
@@ -84,10 +120,20 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
     }
 
     const renderItem = ({ item }: { item: any }) => {
-      const count =
-        channelStore.rootStore.authenticationStore.authMethod === "m3u"
-          ? channelStore.rootStore.m3uStore.getChannelsByCategory(item.category_id).length
-          : channelStore.categoryCounts[item.category_id] || 0
+      let count = 0
+      if (item.category_id === "all") {
+        count = totalCount
+      } else {
+        count =
+          channelStore.rootStore.authenticationStore.authMethod === "m3u"
+            ? channelStore.rootStore.m3uStore.getChannelsByType(
+                channelStore.selectedContentType,
+                item.category_id,
+              ).length
+            : channelStore.categoryCounts[item.category_id] || 0
+      }
+
+      const countLabel = item.category_id === "all" ? getCountLabel(count) : `${count} Channels`
 
       return (
         <TouchableOpacity
@@ -102,7 +148,7 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
           }}
         >
           <Text text={item.category_name} style={themed($itemText)} />
-          <Text text={`${count} Channels`} style={themed($itemSubText)} />
+          <Text text={countLabel} style={themed($itemSubText)} />
         </TouchableOpacity>
       )
     }

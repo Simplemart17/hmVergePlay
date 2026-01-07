@@ -28,6 +28,9 @@ interface VideoPlayerProps {
   style?: any
   isFavorite?: boolean
   onToggleFavorite?: () => void
+  initialAspectRatio?: "default" | "16:9" | "16:10" | "4:3" | "fill"
+  userAgent?: string
+  referrer?: string
 }
 
 type AspectRatio = "default" | "16:9" | "16:10" | "4:3" | "fill"
@@ -42,12 +45,15 @@ export const VideoPlayer = ({
   style,
   isFavorite,
   onToggleFavorite,
+  initialAspectRatio = "default",
+  userAgent,
+  referrer,
 }: VideoPlayerProps) => {
   const videoRef = useRef<VideoRef>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [paused, setPaused] = useState(false)
   const [showControls, setShowControls] = useState(true)
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("default")
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(initialAspectRatio)
   const [volume, setVolume] = useState(1.0)
   const [brightness, setBrightness] = useState(0.5)
   const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null)
@@ -77,7 +83,7 @@ export const VideoPlayer = ({
   // Only request brightness permission on mount, no direct call to native modules on mount to avoid overload
   useEffect(() => {
     // Initial brightness
-    ;(async () => {
+    ; (async () => {
       try {
         const { status } = await Brightness.requestPermissionsAsync()
         if (status === "granted") {
@@ -260,7 +266,13 @@ export const VideoPlayer = ({
         <View style={styles.videoContainer}>
           <Video
             ref={videoRef}
-            source={{ uri: source }}
+            source={{
+              uri: source,
+              headers: {
+                ...(userAgent ? { "User-Agent": userAgent } : {}),
+                ...(referrer ? { "Referrer": referrer } : {}),
+              },
+            }}
             style={getVideoStyle()}
             onLoadStart={() => setIsLoading(true)}
             onLoad={handleLoad}

@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from "react"
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   ImageStyle,
@@ -12,6 +13,8 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { observer } from "mobx-react-lite"
+
+import { capitalizeFirstLetter } from "@/utils/formatString"
 
 import { Button } from "../../components/Button"
 import { PressableIcon } from "../../components/Icon"
@@ -39,12 +42,14 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     numColumns = 2 // Portrait Tablet
   }
 
-  const { channelStore, authenticationStore, favoritesStore } = useStores()
+  const { channelStore, authenticationStore, favoritesStore, settingsStore, downloadStore } =
+    useStores()
   const { themed, theme } = useAppTheme()
   const { category } = route.params || ({} as { category?: string })
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (authenticationStore.authMethod === "m3u") {
@@ -55,6 +60,21 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
       }
     }
   }, [channelStore, authenticationStore.authMethod, channelStore.hasFetchedAllChannels])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      if (authenticationStore.authMethod === "m3u") {
+        await authenticationStore.refreshPlaylist()
+      } else if (channelStore.currentCategory) {
+        await channelStore.fetchChannels(channelStore.currentCategory.category_id)
+      }
+    } catch (error) {
+      console.error("Failed to refresh channels:", error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const playChannel = (channel: any) => {
     setIsLoading(true)
@@ -81,7 +101,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
           channelStore.selectedContentType === "radio"
 
         if (isLive) {
-          streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}`
+          const extension =
+            channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
+          streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
         } else if (channelStore.selectedContentType === "vod") {
           const extension = channel.container_extension || "mp4"
           streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
@@ -101,12 +123,35 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
 
   const channels =
     authenticationStore.authMethod === "m3u"
-      ? channelStore.rootStore.m3uStore.getChannelsByCategory(category || "")
-      : channelStore.hasFetchedAllChannels && channelStore.currentCategory
-        ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
+      ? channelStore.rootStore.m3uStore.getChannelsByType(
+          channelStore.selectedContentType,
+          category === "all" ? undefined : category || "",
+        )
+      : channelStore.hasFetchedAllChannels
+        ? category === "all"
+          ? channelStore.channels
+          : channelStore.currentCategory
+            ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
+            : channelStore.channels
         : channelStore.channels
 
-  const filteredChannels = channels.filter(
+  // Filter adult content if setting is disabled
+  const adultKeywords = ["xxx", "adult", "18+", "porn", "erotic"]
+  const isAdultChannel = (channel: any) => {
+    const categoryName = (
+      channel.category_name ||
+      channel.group ||
+      channel.name ||
+      ""
+    ).toLowerCase()
+    return adultKeywords.some((keyword) => categoryName.includes(keyword))
+  }
+
+  const channelsWithAdultFilter = settingsStore.showAdultContent
+    ? channels
+    : channels.filter((c: any) => !isAdultChannel(c))
+
+  const filteredChannels = channelsWithAdultFilter.filter(
     (c: any) =>
       (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase())), // Handle VOD/Series title
@@ -117,6 +162,44 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
       favoritesStore.toggleM3UFavorite(channel)
     } else {
       favoritesStore.toggleXtreamFavorite(channel)
+    }
+  }
+
+  const handleDownload = (channel: any) => {
+    const id =
+      channel.stream_id?.toString() ||
+      channel.series_id?.toString() ||
+      channel.id ||
+      channel.url ||
+      Math.random().toString()
+
+    if (downloadStore.isDownloaded(id)) {
+      Alert.alert("Already Downloaded", "This content is already available offline.")
+      return
+    }
+
+    const streamUrl =
+      channel.stream_url ||
+      channel.url ||
+      (authenticationStore.authMethod === "m3u" ? channel.url : "")
+
+    if (!streamUrl) {
+      Alert.alert("Error", "Could not find a valid stream URL for this content.")
+      return
+    }
+
+    const download = downloadStore.addDownload(
+      id,
+      channel.name || channel.title,
+      streamUrl,
+      channelStore.selectedContentType === "series" ? "series" : "vod",
+      channel,
+      channel.stream_icon || channel.logo || channel.cover,
+    )
+
+    if (download) {
+      downloadStore.startDownload(download.id)
+      Alert.alert("Download Started", "You can track the progress in the Downloads screen.")
     }
   }
 
@@ -173,6 +256,36 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
             size={24}
           />
         </TouchableOpacity>
+
+        {(channelStore.selectedContentType === "vod" ||
+          channelStore.selectedContentType === "series") && (
+          <TouchableOpacity onPress={() => handleDownload(item)} style={themed($favoriteIcon)}>
+            <Ionicons
+              name={
+                downloadStore.isDownloaded(
+                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
+                )
+                  ? "checkmark-circle"
+                  : downloadStore.getDownload(
+                        item.stream_id?.toString() ||
+                          item.series_id?.toString() ||
+                          item.id ||
+                          item.url,
+                      )?.status === "downloading"
+                    ? "cloud-download"
+                    : "cloud-download-outline"
+              }
+              color={
+                downloadStore.isDownloaded(
+                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
+                )
+                  ? theme.colors.palette.secondary500
+                  : theme.colors.palette.primary500
+              }
+              size={24}
+            />
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     )
   }
@@ -195,7 +308,7 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
           <Text
             text={
               authenticationStore.authMethod === "m3u"
-                ? category
+                ? capitalizeFirstLetter(category)
                 : channelStore.currentCategory?.category_name || "Channels"
             }
             preset="heading"
@@ -240,6 +353,24 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
               Math.random().toString()
             }
             contentContainerStyle={themed($listContent)}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={themed($emptyContainer)}>
+                <Ionicons name="film-outline" size={64} color={theme.colors.textDim} />
+                <Text text="No channels found" style={themed($emptyText)} />
+                <Text
+                  text={
+                    searchQuery
+                      ? "Try adjusting your search"
+                      : settingsStore.showAdultContent
+                        ? "No channels available in this category"
+                        : "No channels available (Adult content filter is enabled)"
+                  }
+                  style={themed($emptySubtext)}
+                />
+              </View>
+            }
           />
         )}
       </Screen>
@@ -359,4 +490,27 @@ const $gridItem: ThemedStyle<ViewStyle> = ({ spacing }) => ({
 
 const $columnWrapper: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   gap: spacing.sm,
+})
+
+const $emptyContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingVertical: spacing.xxxl,
+  paddingHorizontal: spacing.lg,
+})
+
+const $emptyText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.text,
+  fontSize: 18,
+  fontWeight: "600",
+  marginTop: spacing.md,
+  textAlign: "center",
+})
+
+const $emptySubtext: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.textDim,
+  fontSize: 14,
+  marginTop: spacing.xs,
+  textAlign: "center",
 })

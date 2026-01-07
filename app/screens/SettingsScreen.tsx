@@ -1,10 +1,15 @@
 import { FC } from "react"
-import { View, ViewStyle, TextStyle } from "react-native"
+import { Alert, TextStyle, View, ViewStyle } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { observer } from "mobx-react-lite"
 
 import { Button } from "../components/Button"
+import { ListItem } from "../components/ListItem"
 import { Screen } from "../components/Screen"
 import { Text } from "../components/Text"
+import { TextField } from "../components/TextField"
+import { Switch } from "../components/Toggle/Switch"
+import { useStores } from "../models/helpers/useStores"
 import { AppStackScreenProps } from "../navigators/navigationTypes"
 import { useAppTheme } from "../theme/context"
 import { ThemedStyle } from "../theme/types"
@@ -14,7 +19,107 @@ interface SettingsScreenProps extends AppStackScreenProps<"Settings"> {}
 export const SettingsScreen: FC<SettingsScreenProps> = observer(function SettingsScreen({
   navigation,
 }) {
-  const { themed } = useAppTheme()
+  const { themed, theme } = useAppTheme()
+  const { settingsStore } = useStores()
+
+  const handleStreamFormatPress = () => {
+    Alert.alert("Select Live Stream Format", "Choose the format for live TV streams.", [
+      {
+        text: "MPEGTS (.ts)",
+        onPress: () => settingsStore.setStreamFormat("ts"),
+        style: settingsStore.streamFormat === "ts" ? "default" : "default",
+      },
+      {
+        text: "HLS (.m3u8)",
+        onPress: () => settingsStore.setStreamFormat("m3u8"),
+        style: settingsStore.streamFormat === "m3u8" ? "default" : "default",
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ])
+  }
+
+  const handleAspectRatioPress = () => {
+    Alert.alert(
+      "Default Aspect Ratio",
+      "Choose the default video scaling mode. You can also change this during playback.",
+      [
+        {
+          text: "Default (Contain)",
+          onPress: () => settingsStore.setAspectRatio("default"),
+          style: settingsStore.aspectRatio === "default" ? "default" : "default",
+        },
+        {
+          text: "Fill Screen (Crop)",
+          onPress: () => settingsStore.setAspectRatio("fill"),
+          style: settingsStore.aspectRatio === "fill" ? "default" : "default",
+        },
+        {
+          text: "Stretch",
+          onPress: () => settingsStore.setAspectRatio("16:9"), // Using 16:9 as proxy for stretch/fill width often
+          style: settingsStore.aspectRatio === "16:9" ? "default" : "default",
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+    )
+  }
+
+  const handleEpgTimeshiftPress = () => {
+    Alert.alert("EPG Timeshift", "Adjust the program guide time offset (in hours).", [
+      { text: "-2 Hours", onPress: () => settingsStore.setEpgTimeshift(-2) },
+      { text: "-1 Hour", onPress: () => settingsStore.setEpgTimeshift(-1) },
+      { text: "None (0)", onPress: () => settingsStore.setEpgTimeshift(0) },
+      { text: "+1 Hour", onPress: () => settingsStore.setEpgTimeshift(1) },
+      { text: "+2 Hours", onPress: () => settingsStore.setEpgTimeshift(2) },
+      { text: "Cancel", style: "cancel" },
+    ])
+  }
+  const handleUserAgentPreset = () => {
+    Alert.alert("Select User-Agent", "Choose a common User-Agent string.", [
+      {
+        text: "VLC Media Player",
+        onPress: () => settingsStore.setUserAgent("VLC/3.0.18 LibVLC/3.0.18"),
+      },
+      {
+        text: "IPTV Smarters",
+        onPress: () => settingsStore.setUserAgent("IPTVSmartersPro"),
+      },
+      {
+        text: "Chrome (Windows)",
+        onPress: () =>
+          settingsStore.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          ),
+      },
+      {
+        text: "Safari (Mac)",
+        onPress: () =>
+          settingsStore.setUserAgent(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+          ),
+      },
+      { text: "Cancel", style: "cancel" },
+    ])
+  }
+
+  const handleReferrerPreset = () => {
+    Alert.alert("Select Referrer", "Choose a common Referrer logic or generic URL.", [
+      {
+        text: "Generic Google",
+        onPress: () => settingsStore.setReferrer("https://www.google.com/"),
+      },
+      {
+        text: "Generic Bing",
+        onPress: () => settingsStore.setReferrer("https://www.bing.com/"),
+      },
+      { text: "Cancel", style: "cancel" },
+    ])
+  }
 
   return (
     <Screen
@@ -33,18 +138,176 @@ export const SettingsScreen: FC<SettingsScreenProps> = observer(function Setting
         <Text text="Settings" preset="heading" style={themed($heading)} />
       </View>
 
-      <View style={themed($content)}>
-        <Text text="Settings Placeholder" />
-        <Text text="Version 1.0.0" style={$versionText} />
+      <View style={themed($section)}>
+        <Text text="General" preset="subheading" style={themed($sectionTitle)} />
+        <View style={themed($connectedCard)}>
+          <ListItem
+            text="Live Stream Format"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons
+                  name="videocam-outline"
+                  size={24}
+                  color={theme.colors.palette.primary500}
+                />
+              </View>
+            }
+            RightComponent={
+              <View style={themed($valueContainer)}>
+                <Text
+                  text={settingsStore.streamFormat === "ts" ? "MPEGTS (.ts)" : "HLS (.m3u8)"}
+                  style={themed($valueText)}
+                />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textDim} />
+              </View>
+            }
+            onPress={handleStreamFormatPress}
+            style={themed($listItem)}
+          />
+
+          <ListItem
+            text="Default Aspect Ratio"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons name="resize-outline" size={24} color={theme.colors.palette.primary500} />
+              </View>
+            }
+            RightComponent={
+              <View style={themed($valueContainer)}>
+                <Text
+                  text={
+                    settingsStore.aspectRatio === "default"
+                      ? "Default"
+                      : settingsStore.aspectRatio === "fill"
+                        ? "Fill"
+                        : "Stretch"
+                  }
+                  style={themed($valueText)}
+                />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textDim} />
+              </View>
+            }
+            onPress={handleAspectRatioPress}
+            style={themed($listItem)}
+          />
+
+          <ListItem
+            text="Adult Content"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons
+                  name="eye-off-outline"
+                  size={24}
+                  color={theme.colors.palette.primary500}
+                />
+              </View>
+            }
+            RightComponent={
+              <Switch
+                value={settingsStore.showAdultContent}
+                onValueChange={(v) => settingsStore.setShowAdultContent(v)}
+              />
+            }
+            style={themed($listItem)}
+          />
+
+          <ListItem
+            text="EPG Timeshift"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons name="time-outline" size={24} color={theme.colors.palette.primary500} />
+              </View>
+            }
+            RightComponent={
+              <View style={themed($valueContainer)}>
+                <Text
+                  text={`${
+                    settingsStore.epgTimeshift > 0 ? "+" : ""
+                  }${settingsStore.epgTimeshift} hrs`}
+                  style={themed($valueText)}
+                />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textDim} />
+              </View>
+            }
+            onPress={handleEpgTimeshiftPress}
+            style={themed($listItemNoBorder)}
+          />
+        </View>
+      </View>
+
+      <View style={themed($section)}>
+        <Text text="Advanced Network" preset="subheading" style={themed($sectionTitle)} />
+        <View style={themed($connectedCard)}>
+          <View style={themed($inputRow)}>
+            <TextField
+              label="User-Agent"
+              value={settingsStore.userAgent}
+              onChangeText={(v) => settingsStore.setUserAgent(v)}
+              placeholder="e.g. VLC/3.0.0"
+              containerStyle={themed($inputContainer)}
+              RightAccessory={() => (
+                <Button
+                  text="Presets"
+                  preset="reversed"
+                  style={$presetButton}
+                  textStyle={$presetButtonText}
+                  onPress={handleUserAgentPreset}
+                />
+              )}
+            />
+          </View>
+          <View style={themed($inputRowLast)}>
+            <TextField
+              label="Referrer"
+              value={settingsStore.referrer}
+              onChangeText={(v) => settingsStore.setReferrer(v)}
+              placeholder="e.g. http://example.com/"
+              containerStyle={themed($inputContainer)}
+              RightAccessory={() => (
+                <Button
+                  text="Presets"
+                  preset="reversed"
+                  style={$presetButton}
+                  textStyle={$presetButtonText}
+                  onPress={handleReferrerPreset}
+                />
+              )}
+            />
+          </View>
+        </View>
+        <Text
+          text="Custom headers can help bypass some geo-blocking or restrictions. A VPN application is recommended for full geo-unblocking."
+          style={themed($helperText)}
+        />
+      </View>
+
+      <View style={themed($section)}>
+        <Text text="About" preset="subheading" style={themed($sectionTitle)} />
+        <View style={themed($connectedCard)}>
+          <ListItem
+            text="Version"
+            height={60}
+            LeftComponent={
+              <View style={themed($iconContainer)}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={24}
+                  color={theme.colors.palette.secondary500}
+                />
+              </View>
+            }
+            RightComponent={<Text text="1.0.0" style={themed($valueText)} />}
+            style={themed($listItemNoBorder)}
+          />
+        </View>
       </View>
     </Screen>
   )
 })
-
-const $versionText: TextStyle = {
-  marginTop: 20,
-  opacity: 0.5,
-}
 
 const $screenContentContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   flexGrow: 1,
@@ -71,6 +334,84 @@ const $heading: ThemedStyle<TextStyle> = ({ colors }) => ({
   fontSize: 24,
 })
 
-const $content: ThemedStyle<ViewStyle> = ({ spacing }) => ({
-  marginTop: spacing.lg,
+const $section: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  marginTop: spacing.xl,
 })
+
+const $sectionTitle: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.textDim,
+  marginBottom: spacing.sm,
+  fontSize: 14,
+  textTransform: "uppercase",
+  letterSpacing: 1,
+})
+
+const $connectedCard: ThemedStyle<ViewStyle> = ({ colors }) => ({
+  backgroundColor: colors.surface,
+  borderRadius: 16,
+  overflow: "hidden",
+  borderWidth: 1,
+  borderColor: colors.borderLite,
+})
+
+const $listItem: ThemedStyle<ViewStyle> = ({ colors }) => ({
+  borderBottomWidth: 1,
+  borderBottomColor: colors.borderLite,
+  paddingHorizontal: 16,
+})
+
+const $listItemNoBorder: ThemedStyle<ViewStyle> = () => ({
+  borderBottomWidth: 0,
+  paddingHorizontal: 16,
+})
+
+const $iconContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  marginRight: spacing.md,
+  width: 32,
+  height: 32,
+  alignItems: "center",
+  justifyContent: "center",
+})
+
+const $valueContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  gap: spacing.xs,
+})
+
+const $valueText: ThemedStyle<TextStyle> = ({ colors }) => ({
+  color: colors.textDim,
+  fontSize: 14,
+})
+
+const $inputRow: ThemedStyle<ViewStyle> = ({ colors }) => ({
+  borderBottomWidth: 1,
+  borderBottomColor: colors.borderLite,
+  padding: 16,
+})
+
+const $inputRowLast: ThemedStyle<ViewStyle> = () => ({
+  padding: 16,
+})
+
+const $inputContainer: ThemedStyle<ViewStyle> = () => ({
+  marginBottom: 0,
+})
+
+const $helperText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  marginTop: spacing.md,
+  paddingHorizontal: spacing.md,
+  color: colors.textDim,
+  fontSize: 12,
+  lineHeight: 18,
+})
+
+const $presetButton: ViewStyle = {
+  minHeight: 30,
+  paddingVertical: 4,
+  paddingHorizontal: 8,
+}
+
+const $presetButtonText: TextStyle = {
+  fontSize: 12,
+}

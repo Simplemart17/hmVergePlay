@@ -20,7 +20,7 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ContentTypeSelectionScreenProps extends AppStackScreenProps<"ContentTypeSelection"> {}
+interface ContentTypeSelectionScreenProps extends AppStackScreenProps<"ContentTypeSelection"> { }
 
 export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = observer(
   function ContentTypeSelectionScreen({ navigation }) {
@@ -43,6 +43,13 @@ export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = o
         authenticationStore.logout()
         // No need to set isLoading(false) as we are unmounting/navigating
       }, 500)
+    }
+
+    const handleRefresh = async () => {
+      setIsLoading(true)
+      await authenticationStore.refreshPlaylist()
+      setIsLoading(false)
+      Alert.alert("Success", "Playlist refreshed successfully.")
     }
 
     const handleExit = () => {
@@ -182,6 +189,18 @@ export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = o
                 icon="swap-horizontal-outline"
                 onPress={handleSwitchPlaylist}
                 color={theme.colors.palette.primary500}
+              />
+              <ActionButton
+                text="Refresh"
+                icon="refresh-outline"
+                onPress={handleRefresh}
+                color={theme.colors.palette.primary300}
+              />
+              <ActionButton
+                text="Downloads"
+                icon="cloud-download-outline"
+                onPress={() => navigation.navigate("Downloads")}
+                color={theme.colors.palette.secondary500}
               />
               <ActionButton
                 text="Exit"

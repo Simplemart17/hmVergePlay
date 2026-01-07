@@ -16,12 +16,12 @@ export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScree
   navigation,
 }) {
   const { url, title, isLive, channel } = route.params
-  const { favoritesStore, authenticationStore } = useStores()
+  const { favoritesStore, authenticationStore, settingsStore } = useStores()
   const [hasError, setHasError] = useState(false)
 
   const isFavorite =
     authenticationStore.authMethod === "m3u"
-      ? favoritesStore.isM3UFavorite(channel?.id || url) // fallback to url as ID if channel missing (unlikely)
+      ? favoritesStore.isM3UFavorite(channel?.id || url)
       : favoritesStore.isXtreamFavorite(channel?.stream_id)
 
   const toggleFavorite = () => {
@@ -52,6 +52,9 @@ export const PlayerScreen: FC<PlayerScreenProps> = observer(function PlayerScree
         isLive={isLive}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
+        initialAspectRatio={settingsStore.aspectRatio as any}
+        userAgent={settingsStore.userAgent}
+        referrer={settingsStore.referrer}
         onBack={() => navigation.goBack()}
         onError={(e) => {
           console.error(e)

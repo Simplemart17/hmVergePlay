@@ -2,9 +2,11 @@ import { Instance, SnapshotOut, types } from "mobx-state-tree"
 
 import { AuthenticationStoreModel } from "./AuthenticationStore"
 import { ChannelStoreModel } from "./ChannelStore"
+import { DownloadStoreModel } from "./DownloadStore"
 import { FavoritesStoreModel } from "./FavoritesStore"
 import { M3UStoreModel } from "./M3UStore"
 import { PlaylistStoreModel } from "./PlaylistStore"
+import { SettingsStoreModel } from "./SettingsStore"
 
 /**
  * A RootStore model.
@@ -15,6 +17,8 @@ export const RootStoreModel = types.model("RootStore").props({
   m3uStore: types.optional(M3UStoreModel, {}),
   favoritesStore: types.optional(FavoritesStoreModel, {}),
   playlistStore: types.optional(PlaylistStoreModel, {}),
+  settingsStore: types.optional(SettingsStoreModel, {}),
+  downloadStore: types.optional(DownloadStoreModel, {}),
 })
 
 /**

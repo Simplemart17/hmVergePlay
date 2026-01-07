@@ -31,7 +31,12 @@ export const AuthenticationStoreModel = types
     },
   }))
   .actions((store) => {
-    const login = flow(function* (url: string, user: string, pass: string) {
+    const login = flow(function* (
+      url: string,
+      user: string,
+      pass: string,
+      playlistName?: string,
+    ) {
       store.isLoading = true
       store.error = undefined
 
@@ -57,7 +62,8 @@ export const AuthenticationStoreModel = types
             if (!existing) {
               rootStore.playlistStore.addPlaylist({
                 id: `${Date.now()}`,
-                name: `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
+                name:
+                  playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
                 type: "xtream",
                 username: user,
                 password: pass,
@@ -77,7 +83,7 @@ export const AuthenticationStoreModel = types
       }
     })
 
-    const loginM3U = flow(function* (url: string) {
+    const loginM3U = flow(function* (url: string, playlistName?: string) {
       store.isLoading = true
       store.error = undefined
 
@@ -99,7 +105,8 @@ export const AuthenticationStoreModel = types
             if (!existing) {
               rootStore.playlistStore.addPlaylist({
                 id: `${Date.now()}`,
-                name: `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
+                name:
+                  playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
                 type: "m3u",
                 m3uUrl: url,
                 createdAt: Date.now(),
