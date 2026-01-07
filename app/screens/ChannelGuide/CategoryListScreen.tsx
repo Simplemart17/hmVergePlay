@@ -60,15 +60,17 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
       channelStore.selectedContentType,
     ])
 
-    const categories =
-      channelStore.rootStore.authenticationStore.authMethod === "m3u"
+    const categories = [
+      { category_id: "all", category_name: "All Channels" },
+      ...(channelStore.rootStore.authenticationStore.authMethod === "m3u"
         ? channelStore.rootStore.m3uStore
             .getCategoriesByType(channelStore.selectedContentType)
             .map((c: string) => ({
               category_id: c,
               category_name: c,
             }))
-        : channelStore.categories
+        : channelStore.categories),
+    ]
 
     const getHeadingText = () => {
       const baseText = (() => {
@@ -90,13 +92,18 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
     }
 
     const renderItem = ({ item }: { item: any }) => {
-      const count =
-        channelStore.rootStore.authenticationStore.authMethod === "m3u"
-          ? channelStore.rootStore.m3uStore.getChannelsByType(
-              channelStore.selectedContentType,
-              item.category_id,
-            ).length
-          : channelStore.categoryCounts[item.category_id] || 0
+      let count = 0
+      if (item.category_id === "all") {
+        count = totalCount
+      } else {
+        count =
+          channelStore.rootStore.authenticationStore.authMethod === "m3u"
+            ? channelStore.rootStore.m3uStore.getChannelsByType(
+                channelStore.selectedContentType,
+                item.category_id,
+              ).length
+            : channelStore.categoryCounts[item.category_id] || 0
+      }
 
       return (
         <TouchableOpacity

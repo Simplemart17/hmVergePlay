@@ -13,6 +13,8 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { observer } from "mobx-react-lite"
 
+import { capitalizeFirstLetter } from "@/utils/fortmatString"
+
 import { Button } from "../../components/Button"
 import { PressableIcon } from "../../components/Icon"
 import { LoadingIndicator } from "../../components/LoadingIndicator"
@@ -103,10 +105,14 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     authenticationStore.authMethod === "m3u"
       ? channelStore.rootStore.m3uStore.getChannelsByType(
           channelStore.selectedContentType,
-          category || "",
+          category === "all" ? undefined : category || "",
         )
-      : channelStore.hasFetchedAllChannels && channelStore.currentCategory
-        ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
+      : channelStore.hasFetchedAllChannels
+        ? category === "all"
+          ? channelStore.channels
+          : channelStore.currentCategory
+            ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
+            : channelStore.channels
         : channelStore.channels
 
   const filteredChannels = channels.filter(
@@ -198,7 +204,7 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
           <Text
             text={
               authenticationStore.authMethod === "m3u"
-                ? category
+                ? capitalizeFirstLetter(category)
                 : channelStore.currentCategory?.category_name || "Channels"
             }
             preset="heading"
