@@ -21,6 +21,12 @@ module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
     ...config,
     ios: {
       ...config.ios,
+      infoPlist: {
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: true,
+          NSAllowsLocalNetworking: true,
+        },
+      },
       // This privacyManifests is to get you started.
       // See Expo's guide on apple privacy manifests here:
       // https://docs.expo.dev/guides/apple-privacy/

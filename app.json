@@ -3,7 +3,7 @@
   "slug": "HmVergePlay",
   "scheme": "hmvergeplay",
   "version": "1.0.0",
-  "orientation": "portrait",
+  "orientation": "default",
   "userInterfaceStyle": "automatic",
   "icon": "./assets/images/app-icon-all.png",
   "updates": {
