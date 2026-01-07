@@ -26,7 +26,7 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> {}
+interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> { }
 
 export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function ChannelListScreen({
   navigation,
@@ -41,12 +41,13 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     numColumns = 2 // Portrait Tablet
   }
 
-  const { channelStore, authenticationStore, favoritesStore } = useStores()
+  const { channelStore, authenticationStore, favoritesStore, settingsStore } = useStores()
   const { themed, theme } = useAppTheme()
   const { category } = route.params || ({} as { category?: string })
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (authenticationStore.authMethod === "m3u") {
@@ -57,6 +58,21 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
       }
     }
   }, [channelStore, authenticationStore.authMethod, channelStore.hasFetchedAllChannels])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      if (authenticationStore.authMethod === "m3u") {
+        await authenticationStore.refreshPlaylist()
+      } else if (channelStore.currentCategory) {
+        await channelStore.fetchChannels(channelStore.currentCategory.category_id)
+      }
+    } catch (error) {
+      console.error("Failed to refresh channels:", error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const playChannel = (channel: any) => {
     setIsLoading(true)
@@ -106,9 +122,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
   const channels =
     authenticationStore.authMethod === "m3u"
       ? channelStore.rootStore.m3uStore.getChannelsByType(
-          channelStore.selectedContentType,
-          category === "all" ? undefined : category || "",
-        )
+        channelStore.selectedContentType,
+        category === "all" ? undefined : category || "",
+      )
       : channelStore.hasFetchedAllChannels
         ? category === "all"
           ? channelStore.channels
@@ -117,7 +133,23 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
             : channelStore.channels
         : channelStore.channels
 
-  const filteredChannels = channels.filter(
+  // Filter adult content if setting is disabled
+  const adultKeywords = ["xxx", "adult", "18+", "porn", "erotic"]
+  const isAdultChannel = (channel: any) => {
+    const categoryName = (
+      channel.category_name ||
+      channel.group ||
+      channel.name ||
+      ""
+    ).toLowerCase()
+    return adultKeywords.some((keyword) => categoryName.includes(keyword))
+  }
+
+  const channelsWithAdultFilter = settingsStore.showAdultContent
+    ? channels
+    : channels.filter((c: any) => !isAdultChannel(c))
+
+  const filteredChannels = channelsWithAdultFilter.filter(
     (c: any) =>
       (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase())), // Handle VOD/Series title
@@ -251,6 +283,24 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
               Math.random().toString()
             }
             contentContainerStyle={themed($listContent)}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={themed($emptyContainer)}>
+                <Ionicons name="film-outline" size={64} color={theme.colors.textDim} />
+                <Text text="No channels found" style={themed($emptyText)} />
+                <Text
+                  text={
+                    searchQuery
+                      ? "Try adjusting your search"
+                      : settingsStore.showAdultContent
+                        ? "No channels available in this category"
+                        : "No channels available (Adult content filter is enabled)"
+                  }
+                  style={themed($emptySubtext)}
+                />
+              </View>
+            }
           />
         )}
       </Screen>
@@ -370,4 +420,27 @@ const $gridItem: ThemedStyle<ViewStyle> = ({ spacing }) => ({
 
 const $columnWrapper: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   gap: spacing.sm,
+})
+
+const $emptyContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingVertical: spacing.xxxl,
+  paddingHorizontal: spacing.lg,
+})
+
+const $emptyText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.text,
+  fontSize: 18,
+  fontWeight: "600",
+  marginTop: spacing.md,
+  textAlign: "center",
+})
+
+const $emptySubtext: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.textDim,
+  fontSize: 14,
+  marginTop: spacing.xs,
+  textAlign: "center",
 })

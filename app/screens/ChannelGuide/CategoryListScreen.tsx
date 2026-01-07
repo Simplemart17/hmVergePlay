@@ -60,8 +60,36 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
       channelStore.selectedContentType,
     ])
 
+    const getAllCategoryName = () => {
+      switch (channelStore.selectedContentType) {
+        case "live":
+        case "radio":
+          return "All Channels"
+        case "vod":
+          return "All Movies"
+        case "series":
+          return "All Series"
+        default:
+          return "All Channels"
+      }
+    }
+
+    const getCountLabel = (count: number) => {
+      switch (channelStore.selectedContentType) {
+        case "live":
+        case "radio":
+          return `${count} Channels`
+        case "vod":
+          return `${count} Movies`
+        case "series":
+          return `${count} Series`
+        default:
+          return `${count} Channels`
+      }
+    }
+
     const categories = [
-      { category_id: "all", category_name: "All Channels" },
+      { category_id: "all", category_name: getAllCategoryName() },
       ...(channelStore.rootStore.authenticationStore.authMethod === "m3u"
         ? channelStore.rootStore.m3uStore
             .getCategoriesByType(channelStore.selectedContentType)
@@ -105,6 +133,8 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
             : channelStore.categoryCounts[item.category_id] || 0
       }
 
+      const countLabel = item.category_id === "all" ? getCountLabel(count) : `${count} Channels`
+
       return (
         <TouchableOpacity
           style={themed($item)}
@@ -118,7 +148,7 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
           }}
         >
           <Text text={item.category_name} style={themed($itemText)} />
-          <Text text={`${count} Channels`} style={themed($itemSubText)} />
+          <Text text={countLabel} style={themed($itemSubText)} />
         </TouchableOpacity>
       )
     }
