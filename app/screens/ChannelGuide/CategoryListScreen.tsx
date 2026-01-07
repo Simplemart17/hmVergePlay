@@ -46,22 +46,28 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
 
     useEffect(() => {
       if (channelStore.rootStore.authenticationStore.authMethod === "m3u") {
-        setTotalCount(channelStore.rootStore.m3uStore.channels.length)
+        setTotalCount(
+          channelStore.rootStore.m3uStore.getChannelsByType(channelStore.selectedContentType)
+            .length,
+        )
       } else {
         setTotalCount(channelStore.totalChannelCount)
       }
     }, [
       channelStore.totalChannelCount,
-      channelStore.rootStore.m3uStore.channels.length,
+      channelStore.rootStore.m3uStore.channels.length, // Keep as dependency for updates
       channelStore.rootStore.authenticationStore.authMethod,
+      channelStore.selectedContentType,
     ])
 
     const categories =
       channelStore.rootStore.authenticationStore.authMethod === "m3u"
-        ? channelStore.rootStore.m3uStore.categories.map((c: string) => ({
-            category_id: c,
-            category_name: c,
-          }))
+        ? channelStore.rootStore.m3uStore
+            .getCategoriesByType(channelStore.selectedContentType)
+            .map((c: string) => ({
+              category_id: c,
+              category_name: c,
+            }))
         : channelStore.categories
 
     const getHeadingText = () => {
@@ -86,7 +92,10 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
     const renderItem = ({ item }: { item: any }) => {
       const count =
         channelStore.rootStore.authenticationStore.authMethod === "m3u"
-          ? channelStore.rootStore.m3uStore.getChannelsByCategory(item.category_id).length
+          ? channelStore.rootStore.m3uStore.getChannelsByType(
+              channelStore.selectedContentType,
+              item.category_id,
+            ).length
           : channelStore.categoryCounts[item.category_id] || 0
 
       return (

@@ -101,7 +101,10 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
 
   const channels =
     authenticationStore.authMethod === "m3u"
-      ? channelStore.rootStore.m3uStore.getChannelsByCategory(category || "")
+      ? channelStore.rootStore.m3uStore.getChannelsByType(
+          channelStore.selectedContentType,
+          category || "",
+        )
       : channelStore.hasFetchedAllChannels && channelStore.currentCategory
         ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
         : channelStore.channels
