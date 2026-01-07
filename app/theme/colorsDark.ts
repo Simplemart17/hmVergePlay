@@ -1,50 +1,70 @@
 const palette = {
-  neutral900: "#FFFFFF",
-  neutral800: "#F4F2F1",
-  neutral700: "#D7CEC9",
-  neutral600: "#B6ACA6",
-  neutral500: "#978F8A",
-  neutral400: "#564E4A",
-  neutral300: "#3C3836",
-  neutral200: "#191015",
-  neutral100: "#000000",
+  // Dark Theme Base
+  neutral100: "#FFFFFF",
+  neutral200: "#E6E6E8",
+  neutral300: "#A0A0B0", // Light Gray text
+  neutral400: "#6E6E7A",
+  neutral500: "#4A4A55",
+  neutral600: "#2C2C35", // Surface Lighter
+  neutral700: "#1F1F28", // Surface
+  neutral800: "#13131A", // Background Lighter
+  neutral900: "#0A0A0E", // Background Darkest
 
-  primary600: "#F4E0D9",
-  primary500: "#E8C1B4",
-  primary400: "#DDA28E",
-  primary300: "#D28468",
-  primary200: "#C76542",
-  primary100: "#A54F31",
+  // Brand / Accent Colors (Neon/Cyberpunk vibe)
+  primary100: "#CCF9FF",
+  primary200: "#80EDFF",
+  primary300: "#33E1FF",
+  primary400: "#00C8EB",
+  primary500: "#00A8C6", // Main Cyan
+  primary600: "#007A99",
 
-  secondary500: "#DCDDE9",
-  secondary400: "#BCC0D6",
-  secondary300: "#9196B9",
-  secondary200: "#626894",
-  secondary100: "#41476E",
+  secondary100: "#F2D9FF",
+  secondary200: "#E0A3FF",
+  secondary300: "#CB66FF",
+  secondary400: "#B026FF",
+  secondary500: "#8A00D4", // Electric Purple
 
-  accent500: "#FFEED4",
-  accent400: "#FFE1B2",
-  accent300: "#FDD495",
-  accent200: "#FBC878",
-  accent100: "#FFBB50",
+  // Status
+  angry100: "#FFD9D9",
+  angry500: "#FF2E2E",
+  success100: "#D9FFD9",
+  success500: "#00E05D",
 
-  angry100: "#F2D6CD",
-  angry500: "#C03403",
+  overlay20: "rgba(10, 10, 14, 0.2)",
+  overlay50: "rgba(10, 10, 14, 0.5)",
+  overlay80: "rgba(10, 10, 14, 0.8)",
 
-  overlay20: "rgba(25, 16, 21, 0.2)",
-  overlay50: "rgba(25, 16, 21, 0.5)",
+  glass10: "rgba(255, 255, 255, 0.1)",
+  glass20: "rgba(255, 255, 255, 0.2)",
 } as const
 
 export const colors = {
   palette,
   transparent: "rgba(0, 0, 0, 0)",
-  text: palette.neutral800,
-  textDim: palette.neutral600,
-  background: palette.neutral200,
-  border: palette.neutral400,
+
+  text: palette.neutral100,
+  textDim: palette.neutral300,
+  textDark: palette.neutral900,
+
+  background: palette.neutral900,
+  backgroundLite: palette.neutral800,
+
+  border: palette.neutral600,
+  borderLite: palette.glass10,
+
   tint: palette.primary500,
-  tintInactive: palette.neutral300,
-  separator: palette.neutral300,
+  tintSecondary: palette.secondary500,
+  tintInactive: palette.neutral500,
+
+  separator: palette.neutral700,
+
   error: palette.angry500,
   errorBackground: palette.angry100,
+
+  success: palette.success500,
+
+  surface: palette.neutral800,
+  surfaceHighlight: palette.neutral700,
+
+  glass: palette.glass10,
 } as const
