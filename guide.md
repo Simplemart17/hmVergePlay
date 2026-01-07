@@ -33,7 +33,7 @@ Create a cross-platform IPTV player app using the React Native Ignite template t
 ## Technical Requirements:
 - Use the latest version of React Native with Ignite CLI.
 - Ensure compatibility with both iOS and Android platforms.
-- Implement state management using Context API or Redux.
+- Implement state management using MobX-State-Tree (MST).
 - Use React Navigation for seamless navigation between screens.
 - Utilize React Native Video or similar library for video playback.
 - Follow best practices for performance optimization to ensure smooth streaming experience.
