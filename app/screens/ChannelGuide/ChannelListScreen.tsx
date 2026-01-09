@@ -27,7 +27,7 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> { }
+interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> {}
 
 // Optimized List Item Component
 const ChannelListItemComponent = observer(
@@ -65,7 +65,11 @@ const ChannelListItemComponent = observer(
 
     // Unique ID for download check
     const downloadId =
-      item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url
+      item.stream_id?.toString() ||
+      item.series_id?.toString() ||
+      item.id ||
+      item.url ||
+      Math.random().toString()
 
     const isDownloaded = downloadStore.isDownloaded(downloadId)
     const isDownloading = downloadStore.getDownload(downloadId)?.status === "downloading"
@@ -274,9 +278,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
   const channels =
     authenticationStore.authMethod === "m3u"
       ? channelStore.rootStore.m3uStore.getChannelsByType(
-        channelStore.selectedContentType,
-        category === "all" ? undefined : category || "",
-      )
+          channelStore.selectedContentType,
+          category === "all" ? undefined : category || "",
+        )
       : channelStore.hasFetchedAllChannels
         ? category === "all"
           ? channelStore.channels
@@ -301,15 +305,13 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     ? channels
     : channels.filter((c: any) => !isAdultChannel(c))
 
-  const filteredChannels = channelsWithAdultFilter.filter(
-    (c: any) => {
-      if (!searchQuery) return true
-      return (
-        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    },
-  )
+  const filteredChannels = channelsWithAdultFilter.filter((c: any) => {
+    if (!searchQuery) return true
+    return (
+      (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+  })
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {

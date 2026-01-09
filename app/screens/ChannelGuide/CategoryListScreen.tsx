@@ -26,6 +26,18 @@ type CategoryItem = { category_id: string; category_name: string }
 
 // --- Observer Components for Performance ---
 
+// Helper function to get count label based on content type
+const getCountLabel = (count: number, contentType: string): string => {
+  const labelMap: Record<string, string> = {
+    live: "Channels",
+    vod: "Movies",
+    series: "Series",
+    radio: "Channels",
+  }
+  const label = labelMap[contentType] || "Channels"
+  return `${count} ${label}`
+}
+
 // 1. The Item in the Main List
 const CategoryListItem = observer(
   ({
@@ -33,19 +45,18 @@ const CategoryListItem = observer(
     count,
     onPress,
     themed,
+    contentType,
   }: {
     item: { category_id: string; category_name: string }
     count: number
     onPress: (item: any) => void
     themed: any
+    contentType: string
   }) => {
     return (
       <TouchableOpacity style={themed($item)} onPress={() => onPress(item)}>
         <Text text={item.category_name} style={themed($itemText)} />
-        <Text
-          text={item.category_id === "all" ? `${count} Channels` : `${count} Channels`}
-          style={themed($itemSubText)}
-        />
+        <Text text={getCountLabel(count, contentType)} style={themed($itemSubText)} />
       </TouchableOpacity>
     )
   },
@@ -183,7 +194,13 @@ export const CategoryListScreen: FC<CategoryListScreenProps> = observer(
       }
 
       return (
-        <CategoryListItem item={item} count={count} onPress={handleCategoryPress} themed={themed} />
+        <CategoryListItem
+          item={item}
+          count={count}
+          onPress={handleCategoryPress}
+          themed={themed}
+          contentType={channelStore.selectedContentType}
+        />
       )
     }
 
