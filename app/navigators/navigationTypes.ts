@@ -13,6 +13,7 @@ export type AppStackParamList = {
   Favorites: undefined
   Settings: undefined
   Downloads: undefined
+  SeriesDetails: { series: any }
   // 🔥 Your screens go here
   // IGNITE_GENERATOR_ANCHOR_APP_STACK_PARAM_LIST
 }

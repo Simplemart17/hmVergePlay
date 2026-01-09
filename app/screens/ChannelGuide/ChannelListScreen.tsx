@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react"
+import { FC, memo, useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +27,104 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> {}
+interface ChannelListScreenProps extends AppStackScreenProps<"ChannelList"> { }
+
+// Optimized List Item Component
+const ChannelListItemComponent = observer(
+  ({
+    item,
+    onPress,
+    onFavorite,
+    onDownload,
+    isGrid,
+    authMethod,
+    showDownload,
+    themed,
+    theme,
+  }: {
+    item: any
+    onPress: (item: any) => void
+    onFavorite: (item: any) => void
+    onDownload: (item: any) => void
+    isGrid: boolean
+    authMethod: string
+    showDownload: boolean
+    themed: any
+    theme: any
+  }) => {
+    const { favoritesStore, downloadStore } = useStores() // Access stores directly in observer item for reactivity
+
+    const imageUrl = item.stream_icon || item.logo || item.cover
+    const name = item.name || item.title
+    const rating = item.rating || item.rating_5based ? `★ ${item.rating || item.rating_5based}` : ""
+
+    const isFavorite =
+      authMethod === "m3u"
+        ? favoritesStore.isM3UFavorite(item.url)
+        : favoritesStore.isXtreamFavorite(item.stream_id)
+
+    // Unique ID for download check
+    const downloadId =
+      item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url
+
+    const isDownloaded = downloadStore.isDownloaded(downloadId)
+    const isDownloading = downloadStore.getDownload(downloadId)?.status === "downloading"
+
+    const handlePress = useCallback(() => onPress(item), [item, onPress])
+    const handleFavorite = useCallback(() => onFavorite(item), [item, onFavorite])
+    const handleDownload = useCallback(() => onDownload(item), [item, onDownload])
+
+    return (
+      <TouchableOpacity style={[themed($item), isGrid && themed($gridItem)]} onPress={handlePress}>
+        <View style={themed($iconContainer)}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={themed($channelIcon)} resizeMode="cover" />
+          ) : (
+            <View style={themed($placeholderIcon)}>
+              <Text
+                text={name?.substring(0, 2).toUpperCase()}
+                style={{ color: theme.colors.textDim }}
+              />
+            </View>
+          )}
+        </View>
+
+        <View style={themed($infoContainer)}>
+          <Text text={name} style={themed($itemText)} numberOfLines={2} />
+          {!!rating && <Text text={rating} style={themed($ratingText)} />}
+        </View>
+
+        <TouchableOpacity onPress={handleFavorite} style={themed($favoriteIcon)}>
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            color={isFavorite ? theme.colors.error : theme.colors.textDim}
+            size={24}
+          />
+        </TouchableOpacity>
+
+        {showDownload && (
+          <TouchableOpacity onPress={handleDownload} style={themed($favoriteIcon)}>
+            <Ionicons
+              name={
+                isDownloaded
+                  ? "checkmark-circle"
+                  : isDownloading
+                    ? "cloud-download"
+                    : "cloud-download-outline"
+              }
+              color={
+                isDownloaded ? theme.colors.palette.secondary500 : theme.colors.palette.primary500
+              }
+              size={24}
+            />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    )
+  },
+)
+
+const ChannelListItem = memo(ChannelListItemComponent)
 
 export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function ChannelListScreen({
   navigation,
@@ -37,9 +134,9 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
 
   let numColumns = 1
   if (width >= 1000) {
-    numColumns = 3 // Landscape Tablet / Desktop
+    numColumns = 3
   } else if (width >= 700) {
-    numColumns = 2 // Portrait Tablet
+    numColumns = 2
   }
 
   const { channelStore, authenticationStore, favoritesStore, settingsStore, downloadStore } =
@@ -76,57 +173,110 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     }
   }
 
-  const playChannel = (channel: any) => {
-    setIsLoading(true)
-    // Small delay to allow the loading indicator to show before navigating (which might freeze JS thread)
-    setTimeout(() => {
+  const playChannel = useCallback(
+    (channel: any) => {
+      setIsLoading(true)
+      setTimeout(() => {
+        if (authenticationStore.authMethod === "m3u") {
+          navigation.navigate("Player", {
+            url: channel.url,
+            title: channel.name,
+            isLive: true,
+            channel,
+          })
+        } else {
+          if (channelStore.selectedContentType === "series") {
+            // Navigate to Series Details screen
+            navigation.navigate("SeriesDetails", { series: channel })
+            setIsLoading(false)
+            return
+          }
+
+          let streamUrl = ""
+          const isLive =
+            channelStore.selectedContentType === "live" ||
+            channelStore.selectedContentType === "radio"
+
+          if (isLive) {
+            const extension =
+              channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
+            streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
+          } else if (channelStore.selectedContentType === "vod") {
+            const extension = channel.container_extension || "mp4"
+            streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
+          }
+
+          navigation.navigate("Player", {
+            url: streamUrl,
+            title: channel.name || channel.title,
+            isLive,
+            channel,
+          })
+        }
+        setTimeout(() => setIsLoading(false), 500)
+      }, 100)
+    },
+    [authenticationStore, channelStore, navigation],
+  )
+
+  const toggleFavorite = useCallback(
+    (channel: any) => {
       if (authenticationStore.authMethod === "m3u") {
-        navigation.navigate("Player", {
-          url: channel.url,
-          title: channel.name,
-          isLive: true, // Assuming M3U channels are live usually
-          channel,
-        })
+        favoritesStore.toggleM3UFavorite(channel)
       } else {
-        if (channelStore.selectedContentType === "series") {
-          // TODO: Implement Series Details / Episode List
-          console.warn("Series playback not yet implemented")
-          setIsLoading(false)
-          return
-        }
-
-        let streamUrl = ""
-        const isLive =
-          channelStore.selectedContentType === "live" ||
-          channelStore.selectedContentType === "radio"
-
-        if (isLive) {
-          const extension =
-            channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
-          streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
-        } else if (channelStore.selectedContentType === "vod") {
-          const extension = channel.container_extension || "mp4"
-          streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
-        }
-
-        navigation.navigate("Player", {
-          url: streamUrl,
-          title: channel.name || channel.title,
-          isLive,
-          channel,
-        })
+        favoritesStore.toggleXtreamFavorite(channel)
       }
-      // Reset loading state after navigation (when coming back, it shouldn't be loading)
-      setTimeout(() => setIsLoading(false), 500)
-    }, 100)
-  }
+    },
+    [authenticationStore.authMethod, favoritesStore],
+  )
+
+  const handleDownload = useCallback(
+    (channel: any) => {
+      const id =
+        channel.stream_id?.toString() ||
+        channel.series_id?.toString() ||
+        channel.id ||
+        channel.url ||
+        Math.random().toString()
+
+      if (downloadStore.isDownloaded(id)) {
+        Alert.alert("Already Downloaded", "This content is already available offline.")
+        return
+      }
+
+      const streamUrl =
+        channel.stream_url ||
+        channel.url ||
+        (authenticationStore.authMethod === "m3u" ? channel.url : "")
+
+      if (!streamUrl) {
+        Alert.alert("Error", "Could not find a valid stream URL for this content.")
+        return
+      }
+
+      const download = downloadStore.addDownload(
+        id,
+        channel.name || channel.title,
+        streamUrl,
+        channelStore.selectedContentType === "series" ? "series" : "vod",
+        channel,
+        channel.stream_icon || channel.logo || channel.cover,
+      )
+
+      if (download) {
+        downloadStore.startDownload(download.id)
+        Alert.alert("Download Started", "You can track the progress in the Downloads screen.")
+      }
+    },
+    [downloadStore, authenticationStore.authMethod, channelStore.selectedContentType],
+  )
 
   const channels =
     authenticationStore.authMethod === "m3u"
       ? channelStore.rootStore.m3uStore.getChannelsByType(
-          channelStore.selectedContentType,
-          category === "all" ? undefined : category || "",
-        )
+        channelStore.selectedContentType,
+        category === "all" ? undefined : category || "",
+      )
       : channelStore.hasFetchedAllChannels
         ? category === "all"
           ? channelStore.channels
@@ -135,7 +285,7 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
             : channelStore.channels
         : channelStore.channels
 
-  // Filter adult content if setting is disabled
+  // Filter adult content
   const adultKeywords = ["xxx", "adult", "18+", "porn", "erotic"]
   const isAdultChannel = (channel: any) => {
     const categoryName = (
@@ -152,143 +302,55 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     : channels.filter((c: any) => !isAdultChannel(c))
 
   const filteredChannels = channelsWithAdultFilter.filter(
-    (c: any) =>
-      (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase())), // Handle VOD/Series title
+    (c: any) => {
+      if (!searchQuery) return true
+      return (
+        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    },
   )
 
-  const toggleFavorite = (channel: any) => {
-    if (authenticationStore.authMethod === "m3u") {
-      favoritesStore.toggleM3UFavorite(channel)
-    } else {
-      favoritesStore.toggleXtreamFavorite(channel)
-    }
-  }
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      const showDownload =
+        channelStore.selectedContentType === "vod" || channelStore.selectedContentType === "series"
 
-  const handleDownload = (channel: any) => {
-    const id =
-      channel.stream_id?.toString() ||
-      channel.series_id?.toString() ||
-      channel.id ||
-      channel.url ||
-      Math.random().toString()
+      return (
+        <ChannelListItem
+          item={item}
+          onPress={playChannel}
+          onFavorite={toggleFavorite}
+          onDownload={handleDownload}
+          isGrid={numColumns > 1}
+          authMethod={authenticationStore.authMethod}
+          showDownload={showDownload}
+          themed={themed}
+          theme={theme}
+        />
+      )
+    },
+    [
+      channelStore.selectedContentType,
+      authenticationStore.authMethod,
+      numColumns,
+      playChannel,
+      toggleFavorite,
+      handleDownload,
+      themed,
+      theme,
+    ],
+  )
 
-    if (downloadStore.isDownloaded(id)) {
-      Alert.alert("Already Downloaded", "This content is already available offline.")
-      return
-    }
-
-    const streamUrl =
-      channel.stream_url ||
-      channel.url ||
-      (authenticationStore.authMethod === "m3u" ? channel.url : "")
-
-    if (!streamUrl) {
-      Alert.alert("Error", "Could not find a valid stream URL for this content.")
-      return
-    }
-
-    const download = downloadStore.addDownload(
-      id,
-      channel.name || channel.title,
-      streamUrl,
-      channelStore.selectedContentType === "series" ? "series" : "vod",
-      channel,
-      channel.stream_icon || channel.logo || channel.cover,
-    )
-
-    if (download) {
-      downloadStore.startDownload(download.id)
-      Alert.alert("Download Started", "You can track the progress in the Downloads screen.")
-    }
-  }
-
-  const renderItem = ({ item }: { item: any }) => {
-    const imageUrl = item.stream_icon || item.logo || item.cover // Handle cover for Series
-    const name = item.name || item.title // Handle title for VOD/Series
-    const rating = item.rating || item.rating_5based ? `★ ${item.rating || item.rating_5based}` : ""
-
-    const isGrid = numColumns > 1
-
-    return (
-      <TouchableOpacity
-        style={[themed($item), isGrid && themed($gridItem)]}
-        onPress={() => playChannel(item)}
-      >
-        <View style={themed($iconContainer)}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={themed($channelIcon)} resizeMode="cover" />
-          ) : (
-            <View style={themed($placeholderIcon)}>
-              <Text
-                text={name?.substring(0, 2).toUpperCase()}
-                style={{ color: theme.colors.textDim }}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={themed($infoContainer)}>
-          <Text text={name} style={themed($itemText)} numberOfLines={2} />
-          {!!rating && <Text text={rating} style={themed($ratingText)} />}
-        </View>
-
-        <TouchableOpacity onPress={() => toggleFavorite(item)} style={themed($favoriteIcon)}>
-          <Ionicons
-            name={
-              (
-                authenticationStore.authMethod === "m3u"
-                  ? favoritesStore.isM3UFavorite(item.url)
-                  : favoritesStore.isXtreamFavorite(item.stream_id)
-              )
-                ? "heart"
-                : "heart-outline"
-            }
-            color={
-              (
-                authenticationStore.authMethod === "m3u"
-                  ? favoritesStore.isM3UFavorite(item.url)
-                  : favoritesStore.isXtreamFavorite(item.stream_id)
-              )
-                ? theme.colors.error
-                : theme.colors.textDim
-            }
-            size={24}
-          />
-        </TouchableOpacity>
-
-        {(channelStore.selectedContentType === "vod" ||
-          channelStore.selectedContentType === "series") && (
-          <TouchableOpacity onPress={() => handleDownload(item)} style={themed($favoriteIcon)}>
-            <Ionicons
-              name={
-                downloadStore.isDownloaded(
-                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
-                )
-                  ? "checkmark-circle"
-                  : downloadStore.getDownload(
-                        item.stream_id?.toString() ||
-                          item.series_id?.toString() ||
-                          item.id ||
-                          item.url,
-                      )?.status === "downloading"
-                    ? "cloud-download"
-                    : "cloud-download-outline"
-              }
-              color={
-                downloadStore.isDownloaded(
-                  item.stream_id?.toString() || item.series_id?.toString() || item.id || item.url,
-                )
-                  ? theme.colors.palette.secondary500
-                  : theme.colors.palette.primary500
-              }
-              size={24}
-            />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-    )
-  }
+  const keyExtractor = useCallback(
+    (item: any) =>
+      item.stream_id?.toString() ||
+      item.series_id?.toString() ||
+      item.id ||
+      item.url ||
+      Math.random().toString(),
+    [],
+  )
 
   return (
     <View style={$container}>
@@ -341,20 +403,19 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
           </View>
         ) : (
           <FlatList
-            key={numColumns} // Force re-render when columns change
+            key={numColumns} // Force re-render grid/list toggle
             data={filteredChannels}
             renderItem={renderItem}
             numColumns={numColumns}
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-            keyExtractor={(item) =>
-              item.stream_id?.toString() ||
-              item.series_id?.toString() ||
-              item.id ||
-              Math.random().toString()
-            }
+            keyExtractor={keyExtractor}
             contentContainerStyle={themed($listContent)}
             refreshing={refreshing}
             onRefresh={handleRefresh}
+            // Optimization Props
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
             ListEmptyComponent={
               <View style={themed($emptyContainer)}>
                 <Ionicons name="film-outline" size={64} color={theme.colors.textDim} />

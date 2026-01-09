@@ -173,4 +173,20 @@ export class XtreamApi {
 
     return { kind: "ok", data: response.data || [] }
   }
+  async getSeriesInfo(
+    username: string,
+    password: string,
+    seriesId: number,
+  ): Promise<{ kind: "ok"; data: any } | GeneralApiProblem> {
+    const response: ApiResponse<any> = await this.apisauce.get("player_api.php", {
+      username,
+      password,
+      action: "get_series_info",
+      series_id: seriesId,
+    })
+
+    if (!response.ok) return getGeneralApiProblem(response) || { kind: "unknown", temporary: true }
+
+    return { kind: "ok", data: response.data || {} }
+  }
 }
