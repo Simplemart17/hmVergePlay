@@ -155,7 +155,12 @@ export const ChannelStoreModel = types
         }
 
         if (categoriesResult && categoriesResult.kind === "ok") {
-          store.setCategories(categoriesResult.data)
+          const validCategories = (categoriesResult.data || []).map((c: any) => ({
+            ...c,
+            category_id: String(c.category_id),
+            category_name: c.category_name || String(c.category_id),
+          }))
+          store.setCategories(validCategories)
         }
 
         // 2. Fetch All Channels/Streams
@@ -171,11 +176,26 @@ export const ChannelStoreModel = types
         if (channelsResult && channelsResult.kind === "ok") {
           let channels = channelsResult.data
 
+          // Normalize data before setting to avoid MST type errors
+          channels = channels.map((c: any) => ({
+            ...c,
+            // Ensure category_id is a string
+            category_id: c.category_id ? String(c.category_id) : undefined,
+            // Ensure IDs are numbers
+            stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+            series_id: c.series_id ? Number(c.series_id) : undefined,
+            num: c.num ? Number(c.num) : undefined,
+            // Ensure rating is valid
+            rating: c.rating === "" ? null : c.rating,
+          }))
+
           if (type === "live") {
-            channels = channels.filter((c: any) => c.stream_type === "live")
-          } else if (type === "vod") {
-            channels = channels.filter((c: any) => c.stream_type === "movie")
+            // Filter out explicit radio streams from Live view
+            channels = channels.filter(
+              (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
+            )
           } else if (type === "radio") {
+            // Prefer explicit radio streams, but fallback if none found (e.g. they might be marked live)
             const radioChannels = channels.filter(
               (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
             )
@@ -183,6 +203,7 @@ export const ChannelStoreModel = types
               channels = radioChannels
             }
           }
+          // For VOD and Series, pass through all results from the API
           store.setChannels(channels)
           store.setHasFetchedAllChannels(true)
         }
@@ -214,7 +235,12 @@ export const ChannelStoreModel = types
         }
 
         if (result && result.kind === "ok") {
-          store.setCategories(result.data)
+          const validCategories = (result.data || []).map((c: any) => ({
+            ...c,
+            category_id: String(c.category_id),
+            category_name: c.category_name || String(c.category_id),
+          }))
+          store.setCategories(validCategories)
         }
       } catch (e) {
         console.error(e)
@@ -247,12 +273,21 @@ export const ChannelStoreModel = types
           // We'll trust the category or filter if stream_type is available.
           let channels = result.data
 
+          // Normalize data before setting to avoid MST type errors
+          channels = channels.map((c: any) => ({
+            ...c,
+            category_id: c.category_id ? String(c.category_id) : undefined,
+            stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+            series_id: c.series_id ? Number(c.series_id) : undefined,
+            num: c.num ? Number(c.num) : undefined,
+            rating: c.rating === "" ? null : c.rating,
+          }))
+
           if (store.selectedContentType === "live") {
-            channels = channels.filter((c: any) => c.stream_type === "live")
-          } else if (store.selectedContentType === "vod") {
-            channels = channels.filter((c: any) => c.stream_type === "movie")
+            channels = channels.filter(
+              (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
+            )
           } else if (store.selectedContentType === "radio") {
-            // Simple filter if stream_type is explicit, otherwise show all in that category
             const radioChannels = channels.filter(
               (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
             )
@@ -260,6 +295,7 @@ export const ChannelStoreModel = types
               channels = radioChannels
             }
           }
+          // For VOD and Series, pass through all results
           store.setChannels(channels)
           if (!categoryId) {
             store.setHasFetchedAllChannels(true)
