@@ -24,6 +24,8 @@ module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
       infoPlist: {
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
+          NSAllowsArbitraryLoadsForMedia: true,
+          NSAllowsArbitraryLoadsInWebContent: true,
           NSAllowsLocalNetworking: true,
         },
       },

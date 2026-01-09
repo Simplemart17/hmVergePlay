@@ -83,7 +83,7 @@ export const VideoPlayer = ({
   // Only request brightness permission on mount, no direct call to native modules on mount to avoid overload
   useEffect(() => {
     // Initial brightness
-    ; (async () => {
+    ;(async () => {
       try {
         const { status } = await Brightness.requestPermissionsAsync()
         if (status === "granted") {
@@ -270,7 +270,7 @@ export const VideoPlayer = ({
               uri: source,
               headers: {
                 ...(userAgent ? { "User-Agent": userAgent } : {}),
-                ...(referrer ? { "Referrer": referrer } : {}),
+                ...(referrer ? { Referrer: referrer } : {}),
               },
             }}
             style={getVideoStyle()}
@@ -284,11 +284,12 @@ export const VideoPlayer = ({
             }}
             resizeMode={getResizeMode()}
             paused={paused}
+            minLoadRetryCount={5}
             bufferConfig={{
-              minBufferMs: 15000,
-              maxBufferMs: 50000,
-              bufferForPlaybackMs: 2500,
-              bufferForPlaybackAfterRebufferMs: 5000,
+              minBufferMs: 5000,
+              maxBufferMs: 30000,
+              bufferForPlaybackMs: 1000,
+              bufferForPlaybackAfterRebufferMs: 2000,
             }}
           />
         </View>

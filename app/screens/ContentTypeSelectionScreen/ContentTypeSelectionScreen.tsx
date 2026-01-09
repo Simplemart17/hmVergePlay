@@ -20,7 +20,7 @@ import { AppStackScreenProps } from "../../navigators/navigationTypes"
 import { useAppTheme } from "../../theme/context"
 import { ThemedStyle } from "../../theme/types"
 
-interface ContentTypeSelectionScreenProps extends AppStackScreenProps<"ContentTypeSelection"> { }
+interface ContentTypeSelectionScreenProps extends AppStackScreenProps<"ContentTypeSelection"> {}
 
 export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = observer(
   function ContentTypeSelectionScreen({ navigation }) {
@@ -113,6 +113,7 @@ export const ContentTypeSelectionScreen: FC<ContentTypeSelectionScreenProps> = o
       icon,
       onPress,
       color,
+      // ...
     }: {
       text: string
       icon: keyof typeof Ionicons.glyphMap

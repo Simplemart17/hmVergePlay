@@ -11,6 +11,7 @@ export const PlaylistModel = types.model("Playlist").props({
   // M3U specific
   m3uUrl: types.maybe(types.string),
   createdAt: types.number,
+  hiddenCategories: types.optional(types.array(types.string), []),
 })
 
 export interface Playlist extends Instance<typeof PlaylistModel> {}
@@ -29,6 +30,16 @@ export const PlaylistStoreModel = types
     },
     get hasPlaylists(): boolean {
       return self.playlists.length > 0
+    },
+    // Computed view for reactive hidden category tracking
+    get hiddenCategoryIds(): string[] {
+      const playlist = self.playlists.find((p) => p.id === self.activePlaylistId)
+      return playlist ? [...playlist.hiddenCategories] : []
+    },
+    // Helper to check if a category is hidden
+    isCategoryHidden(categoryId: string): boolean {
+      const playlist = self.playlists.find((p) => p.id === self.activePlaylistId)
+      return playlist ? playlist.hiddenCategories.includes(categoryId) : false
     },
   }))
   .actions((self) => ({
@@ -55,6 +66,17 @@ export const PlaylistStoreModel = types
     },
     clearActivePlaylist() {
       self.activePlaylistId = undefined
+    },
+    toggleHiddenCategory(categoryId: string) {
+      const playlist = self.playlists.find((p) => p.id === self.activePlaylistId)
+      if (playlist) {
+        const index = playlist.hiddenCategories.indexOf(categoryId)
+        if (index > -1) {
+          playlist.hiddenCategories.splice(index, 1)
+        } else {
+          playlist.hiddenCategories.push(categoryId)
+        }
+      }
     },
   }))
 

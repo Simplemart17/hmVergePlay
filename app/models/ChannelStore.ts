@@ -89,7 +89,8 @@ export const ChannelStoreModel = types
     setIsLoading(loading: boolean) {
       store.isLoading = loading
     },
-    setCurrentCategory(category: Category) {
+    setCurrentCategory(categoryId: string) {
+      const category = store.categories.find((c) => c.category_id === categoryId)
       store.currentCategory = category
     },
     setContentType(type: ContentType) {
