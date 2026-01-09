@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react"
+import { FC, useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -30,83 +30,161 @@ export const SeriesDetailsScreen: FC<SeriesDetailsScreenProps> = observer(
     const { authenticationStore } = useStores()
     const { themed, theme } = useAppTheme()
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [episodes, setEpisodes] = useState<any[]>([])
     const [info, setInfo] = useState<any>(null)
+    const [retryCount, setRetryCount] = useState(0)
 
-    useEffect(() => {
-      async function fetchDetails() {
-        if (
-          !authenticationStore.serverUrl ||
-          !authenticationStore.username ||
-          !authenticationStore.password
-        )
-          return
+    const fetchDetails = useCallback(async () => {
+      if (
+        !authenticationStore.serverUrl ||
+        !authenticationStore.username ||
+        !authenticationStore.password
+      ) {
+        setError("Authentication credentials are missing")
+        setLoading(false)
+        return
+      }
 
+      // Validate series_id
+      if (!series?.series_id) {
+        setError("Invalid series information")
+        setLoading(false)
+        return
+      }
+
+      try {
+        setError(null)
         const api = new XtreamApi(authenticationStore.serverUrl)
         const result = await api.getSeriesInfo(
           authenticationStore.username,
           authenticationStore.password,
-          series.series_id,
+          Number(series.series_id),
         )
 
         if (result.kind === "ok") {
           // Result usually has { info: {...}, episodes: { "1": [...], "2": [...] } }
           // Flatten episodes or handle seasons
-          setInfo(result.data.info)
-          // Episodes might be an object keyed by season number
-          const epsData = result.data.episodes
+          setInfo(result.data?.info || null)
+
+          // Episodes might be an object keyed by season number or an array
+          const epsData = result.data?.episodes
           let allEps: any[] = []
+
           if (Array.isArray(epsData)) {
             allEps = epsData
-          } else if (typeof epsData === "object") {
-            // Flatten seasons
-            Object.keys(epsData).forEach((seasonKey) => {
+          } else if (epsData && typeof epsData === "object") {
+            // Flatten seasons - sort by season number for better UX
+            const seasonKeys = Object.keys(epsData).sort((a, b) => {
+              const numA = parseInt(a, 10) || 0
+              const numB = parseInt(b, 10) || 0
+              return numA - numB
+            })
+
+            seasonKeys.forEach((seasonKey) => {
               const seasonEps = epsData[seasonKey]
               if (Array.isArray(seasonEps)) {
-                allEps = allEps.concat(seasonEps)
+                // Sort episodes within season by episode number
+                const sortedEps = seasonEps.sort((a, b) => {
+                  const epNumA = a.episode_num || 0
+                  const epNumB = b.episode_num || 0
+                  return epNumA - epNumB
+                })
+                allEps = allEps.concat(sortedEps)
               }
             })
           }
+
           setEpisodes(allEps)
+          setRetryCount(0) // Reset retry count on success
         } else {
-          Alert.alert("Error", "Failed to load series details")
+          // Retry logic for transient errors
+          if (retryCount < 2 && (result.kind === "timeout" || result.kind === "unknown")) {
+            setRetryCount((prev) => prev + 1)
+            setTimeout(() => fetchDetails(), 1000 * (retryCount + 1)) // Exponential backoff
+            return
+          }
+
+          const errorMessage =
+            result.kind === "timeout"
+              ? "Request timed out. Please check your connection."
+              : result.kind === "unauthorized"
+                ? "Authentication failed. Please check your credentials."
+                : "Failed to load series details. Please try again."
+          setError(errorMessage)
         }
+      } catch (e: any) {
+        console.error("Error fetching series details:", e)
+        setError(e?.message || "An unexpected error occurred")
+      } finally {
         setLoading(false)
       }
+    }, [
+      authenticationStore.serverUrl,
+      authenticationStore.username,
+      authenticationStore.password,
+      series?.series_id,
+      retryCount,
+    ])
 
+    useEffect(() => {
       fetchDetails()
-    }, [series.series_id, authenticationStore])
+    }, [fetchDetails])
 
-    const playEpisode = (episode: any) => {
-      const extension = episode.container_extension || "mp4"
-      const streamUrl = `${authenticationStore.serverUrl}/series/${authenticationStore.username}/${authenticationStore.password}/${episode.id}.${extension}`
+    const playEpisode = useCallback(
+      (episode: any) => {
+        if (!episode?.id) {
+          Alert.alert("Error", "Invalid episode information")
+          return
+        }
 
-      navigation.navigate("Player", {
-        url: streamUrl,
-        title: `${episode.title} - S${episode.season} E${episode.episode_num}`,
-        isLive: false,
-        channel: episode, // Pass episode as channel for player context
-      })
-    }
+        const extension = episode.container_extension || "mp4"
+        const streamUrl = `${authenticationStore.serverUrl}/series/${authenticationStore.username}/${authenticationStore.password}/${episode.id}.${extension}`
 
-    const renderEpisode = ({ item }: { item: any }) => {
-      return (
-        <TouchableOpacity style={themed($episodeItem)} onPress={() => playEpisode(item)}>
-          <View style={themed($playIconContainer)}>
-            <Ionicons name="play-circle" size={32} color={theme.colors.palette.primary500} />
-          </View>
-          <View style={themed($episodeTextContainer)}>
-            <Text
-              text={`S${item.season} E${item.episode_num} - ${item.title}`}
-              style={themed($episodeTitle)}
-            />
-            {item.info && typeof item.info === "object" && (
-              <Text text={item.info.duration || ""} style={themed($episodeDuration)} />
-            )}
-          </View>
-        </TouchableOpacity>
-      )
-    }
+        navigation.navigate("Player", {
+          url: streamUrl,
+          title: `${episode.title || "Episode"} - S${episode.season || "?"} E${episode.episode_num || "?"}`,
+          isLive: false,
+          channel: episode, // Pass episode as channel for player context
+        })
+      },
+      [
+        authenticationStore.serverUrl,
+        authenticationStore.username,
+        authenticationStore.password,
+        navigation,
+      ],
+    )
+
+    const renderEpisode = useCallback(
+      ({ item }: { item: any }) => {
+        const episodeTitle = item.title || "Untitled Episode"
+        const season = item.season || "?"
+        const episodeNum = item.episode_num || "?"
+        const duration = item.info?.duration || item.duration || ""
+
+        return (
+          <TouchableOpacity style={themed($episodeItem)} onPress={() => playEpisode(item)}>
+            <View style={themed($playIconContainer)}>
+              <Ionicons name="play-circle" size={32} color={theme.colors.palette.primary500} />
+            </View>
+            <View style={themed($episodeTextContainer)}>
+              <Text
+                text={`S${season} E${episodeNum} - ${episodeTitle}`}
+                style={themed($episodeTitle)}
+              />
+              {duration && <Text text={duration} style={themed($episodeDuration)} />}
+            </View>
+          </TouchableOpacity>
+        )
+      },
+      [playEpisode, themed, theme],
+    )
+
+    const keyExtractor = useCallback(
+      (item: any, index: number) => item.id?.toString() || `episode-${index}`,
+      [],
+    )
 
     return (
       <Screen
@@ -152,15 +230,37 @@ export const SeriesDetailsScreen: FC<SeriesDetailsScreenProps> = observer(
             color={theme.colors.palette.primary500}
             style={themed($loader)}
           />
+        ) : error ? (
+          <View style={themed($errorContainer)}>
+            <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
+            <Text text={error} style={themed($errorText)} />
+            <Button
+              preset="default"
+              text="Retry"
+              onPress={() => {
+                setRetryCount(0)
+                setLoading(true)
+                fetchDetails()
+              }}
+              style={themed($retryButton)}
+            />
+          </View>
+        ) : episodes.length === 0 ? (
+          <View style={themed($emptyContainer)}>
+            <Ionicons name="film-outline" size={48} color={theme.colors.textDim} />
+            <Text text="No episodes available" style={themed($emptyText)} />
+          </View>
         ) : (
           <FlatList
             data={episodes}
             renderItem={renderEpisode}
-            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            keyExtractor={keyExtractor}
             contentContainerStyle={themed($listContent)}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
+            initialNumToRender={15}
+            maxToRenderPerBatch={15}
             windowSize={10}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
           />
         )}
       </Screen>
@@ -277,4 +377,40 @@ const $episodeTextContainer: ThemedStyle<ViewStyle> = () => ({
 
 const $loader: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   marginTop: spacing.lg,
+})
+
+const $errorContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingVertical: spacing.xxl,
+  paddingHorizontal: spacing.lg,
+})
+
+const $errorText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.error,
+  fontSize: 16,
+  textAlign: "center",
+  marginTop: spacing.md,
+  marginBottom: spacing.lg,
+})
+
+const $retryButton: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  marginTop: spacing.md,
+  minWidth: 120,
+})
+
+const $emptyContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingVertical: spacing.xxl,
+  paddingHorizontal: spacing.lg,
+})
+
+const $emptyText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
+  color: colors.textDim,
+  fontSize: 16,
+  textAlign: "center",
+  marginTop: spacing.md,
 })

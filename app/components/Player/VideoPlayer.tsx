@@ -284,13 +284,15 @@ export const VideoPlayer = ({
             }}
             resizeMode={getResizeMode()}
             paused={paused}
-            minLoadRetryCount={5}
+            minLoadRetryCount={3}
             bufferConfig={{
-              minBufferMs: 5000,
-              maxBufferMs: 30000,
-              bufferForPlaybackMs: 1000,
-              bufferForPlaybackAfterRebufferMs: 2000,
+              minBufferMs: isLive ? 10000 : 15000,
+              maxBufferMs: isLive ? 30000 : 60000,
+              bufferForPlaybackMs: isLive ? 2000 : 5000,
+              bufferForPlaybackAfterRebufferMs: isLive ? 3000 : 10000,
             }}
+            maxBitRate={isLive ? undefined : 10000000}
+            preferredForwardBufferDuration={isLive ? 5 : 30}
           />
         </View>
       </TouchableWithoutFeedback>

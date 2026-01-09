@@ -1,4 +1,4 @@
-import { FC, memo, useCallback, useEffect, useState } from "react"
+import { FC, memo, useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -148,9 +148,19 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
   const { themed, theme } = useAppTheme()
   const { category } = route.params || ({} as { category?: string })
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Debounce search query to avoid filtering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300) // 300ms debounce delay
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   useEffect(() => {
     if (authenticationStore.authMethod === "m3u") {
@@ -275,43 +285,71 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
     [downloadStore, authenticationStore.authMethod, channelStore.selectedContentType],
   )
 
-  const channels =
-    authenticationStore.authMethod === "m3u"
-      ? channelStore.rootStore.m3uStore.getChannelsByType(
-          channelStore.selectedContentType,
-          category === "all" ? undefined : category || "",
-        )
-      : channelStore.hasFetchedAllChannels
-        ? category === "all"
-          ? channelStore.channels
-          : channelStore.currentCategory
-            ? channelStore.getChannelsByCategory(channelStore.currentCategory.category_id)
-            : channelStore.channels
-        : channelStore.channels
+  // Extract values to avoid linter warnings and unnecessary re-renders
+  const selectedContentType = channelStore.selectedContentType
+  const hasFetchedAllChannels = channelStore.hasFetchedAllChannels
+  const storeChannels = channelStore.channels
+  const currentCategoryId = channelStore.currentCategory?.category_id
 
-  // Filter adult content
-  const adultKeywords = ["xxx", "adult", "18+", "porn", "erotic"]
-  const isAdultChannel = (channel: any) => {
-    const categoryName = (
-      channel.category_name ||
-      channel.group ||
-      channel.name ||
-      ""
-    ).toLowerCase()
-    return adultKeywords.some((keyword) => categoryName.includes(keyword))
-  }
+  // Memoize channels list to avoid recalculating on every render
+  const channels = useMemo(
+    () =>
+      authenticationStore.authMethod === "m3u"
+        ? channelStore.rootStore.m3uStore.getChannelsByType(
+            selectedContentType,
+            category === "all" ? undefined : category || "",
+          )
+        : hasFetchedAllChannels
+          ? category === "all"
+            ? storeChannels
+            : currentCategoryId
+              ? channelStore.getChannelsByCategory(currentCategoryId)
+              : storeChannels
+          : storeChannels,
+    [
+      authenticationStore.authMethod,
+      selectedContentType,
+      category,
+      hasFetchedAllChannels,
+      storeChannels,
+      currentCategoryId,
+      channelStore,
+    ],
+  )
 
-  const channelsWithAdultFilter = settingsStore.showAdultContent
-    ? channels
-    : channels.filter((c: any) => !isAdultChannel(c))
+  // Memoize adult content filter
+  const adultKeywords = useMemo(() => ["xxx", "adult", "18+", "porn", "erotic"], [])
+  const isAdultChannel = useCallback(
+    (channel: any) => {
+      const categoryName = (
+        channel.category_name ||
+        channel.group ||
+        channel.name ||
+        ""
+      ).toLowerCase()
+      return adultKeywords.some((keyword) => categoryName.includes(keyword))
+    },
+    [adultKeywords],
+  )
 
-  const filteredChannels = channelsWithAdultFilter.filter((c: any) => {
-    if (!searchQuery) return true
-    return (
-      (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (c.title && c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  })
+  // Memoize filtered channels to avoid recalculating on every render
+  const filteredChannels = useMemo(() => {
+    // Apply adult content filter
+    const channelsWithAdultFilter = settingsStore.showAdultContent
+      ? channels
+      : channels.filter((c: any) => !isAdultChannel(c))
+
+    // Apply search filter with debounced query
+    if (!debouncedSearchQuery) return channelsWithAdultFilter
+
+    const queryLower = debouncedSearchQuery.toLowerCase()
+    return channelsWithAdultFilter.filter((c: any) => {
+      return (
+        (c.name && c.name.toLowerCase().includes(queryLower)) ||
+        (c.title && c.title.toLowerCase().includes(queryLower))
+      )
+    })
+  }, [channels, settingsStore.showAdultContent, isAdultChannel, debouncedSearchQuery])
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -414,10 +452,21 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
             contentContainerStyle={themed($listContent)}
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            // Optimization Props
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={5}
+            // Optimization Props - increased for better performance with large datasets
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={10}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
+            getItemLayout={
+              numColumns === 1
+                ? undefined
+                : (data, index) => ({
+                    length: 100, // Approximate item height
+                    offset: 100 * Math.floor(index / numColumns),
+                    index,
+                  })
+            }
             ListEmptyComponent={
               <View style={themed($emptyContainer)}>
                 <Ionicons name="film-outline" size={64} color={theme.colors.textDim} />

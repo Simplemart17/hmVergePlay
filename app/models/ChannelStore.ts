@@ -61,18 +61,25 @@ export const ChannelStoreModel = types
       return getRoot(store) as any
     },
     get categoryCounts() {
+      // Memoize category counts computation to avoid recalculating on every access
+      // This is especially important for large datasets
       const counts: Record<string, number> = {}
-      store.channels.forEach((c) => {
+      const channelsLength = store.channels.length
+
+      // Use a simple loop for better performance than forEach
+      for (let i = 0; i < channelsLength; i++) {
+        const c = store.channels[i]
         if (c.category_id) {
           counts[c.category_id] = (counts[c.category_id] || 0) + 1
         }
-      })
+      }
       return counts
     },
     get totalChannelCount() {
       return store.channels.length
     },
     getChannelsByCategory(categoryId: string) {
+      // Return a filtered array - consider caching if this is called frequently
       return store.channels.filter((c) => c.category_id === categoryId)
     },
   }))
@@ -176,18 +183,33 @@ export const ChannelStoreModel = types
         if (channelsResult && channelsResult.kind === "ok") {
           let channels = channelsResult.data
 
-          // Normalize data before setting to avoid MST type errors
-          channels = channels.map((c: any) => ({
-            ...c,
-            // Ensure category_id is a string
-            category_id: c.category_id ? String(c.category_id) : undefined,
-            // Ensure IDs are numbers
-            stream_id: c.stream_id ? Number(c.stream_id) : undefined,
-            series_id: c.series_id ? Number(c.series_id) : undefined,
-            num: c.num ? Number(c.num) : undefined,
-            // Ensure rating is valid
-            rating: c.rating === "" ? null : c.rating,
-          }))
+          // Normalize data in batches to avoid blocking the main thread
+          // Process in chunks to allow UI updates between batches
+          const BATCH_SIZE = 1000
+          const normalizedChannels: any[] = []
+
+          for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+            const batch = channels.slice(i, i + BATCH_SIZE)
+            const normalizedBatch = batch.map((c: any) => ({
+              ...c,
+              // Ensure category_id is a string
+              category_id: c.category_id ? String(c.category_id) : undefined,
+              // Ensure IDs are numbers
+              stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+              series_id: c.series_id ? Number(c.series_id) : undefined,
+              num: c.num ? Number(c.num) : undefined,
+              // Ensure rating is valid
+              rating: c.rating === "" ? null : c.rating,
+            }))
+            normalizedChannels.push(...normalizedBatch)
+
+            // Yield control every batch to prevent UI freezing
+            if (i + BATCH_SIZE < channels.length) {
+              yield Promise.resolve()
+            }
+          }
+
+          channels = normalizedChannels
 
           if (type === "live") {
             // Filter out explicit radio streams from Live view
@@ -273,15 +295,29 @@ export const ChannelStoreModel = types
           // We'll trust the category or filter if stream_type is available.
           let channels = result.data
 
-          // Normalize data before setting to avoid MST type errors
-          channels = channels.map((c: any) => ({
-            ...c,
-            category_id: c.category_id ? String(c.category_id) : undefined,
-            stream_id: c.stream_id ? Number(c.stream_id) : undefined,
-            series_id: c.series_id ? Number(c.series_id) : undefined,
-            num: c.num ? Number(c.num) : undefined,
-            rating: c.rating === "" ? null : c.rating,
-          }))
+          // Normalize data in batches to avoid blocking the main thread
+          const BATCH_SIZE = 1000
+          const normalizedChannels: any[] = []
+
+          for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+            const batch = channels.slice(i, i + BATCH_SIZE)
+            const normalizedBatch = batch.map((c: any) => ({
+              ...c,
+              category_id: c.category_id ? String(c.category_id) : categoryId || undefined,
+              stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+              series_id: c.series_id ? Number(c.series_id) : undefined,
+              num: c.num ? Number(c.num) : undefined,
+              rating: c.rating === "" ? null : c.rating,
+            }))
+            normalizedChannels.push(...normalizedBatch)
+
+            // Yield control every batch to prevent UI freezing
+            if (i + BATCH_SIZE < channels.length) {
+              yield Promise.resolve()
+            }
+          }
+
+          channels = normalizedChannels
 
           if (store.selectedContentType === "live") {
             channels = channels.filter(
