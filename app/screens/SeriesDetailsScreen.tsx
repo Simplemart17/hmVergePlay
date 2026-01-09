@@ -209,9 +209,14 @@ export const SeriesDetailsScreen: FC<SeriesDetailsScreenProps> = observer(
                 source={{ uri: series.cover || series.stream_icon }}
                 style={themed($coverImage)}
                 resizeMode="cover"
+                onError={() => {
+                  // Image failed to load, will show placeholder
+                }}
               />
             ) : (
-              <View style={themed($placeholderCover)} />
+              <View style={themed($placeholderCover)}>
+                <Ionicons name="film-outline" size={48} color={theme.colors.textDim} />
+              </View>
             )}
           </View>
           <View style={themed($detailsContainer)}>

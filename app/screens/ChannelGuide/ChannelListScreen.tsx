@@ -74,19 +74,29 @@ const ChannelListItemComponent = observer(
     const isDownloaded = downloadStore.isDownloaded(downloadId)
     const isDownloading = downloadStore.getDownload(downloadId)?.status === "downloading"
 
+    const [imageError, setImageError] = useState(false)
+
     const handlePress = useCallback(() => onPress(item), [item, onPress])
     const handleFavorite = useCallback(() => onFavorite(item), [item, onFavorite])
     const handleDownload = useCallback(() => onDownload(item), [item, onDownload])
+    const handleImageError = useCallback(() => {
+      setImageError(true)
+    }, [])
 
     return (
       <TouchableOpacity style={[themed($item), isGrid && themed($gridItem)]} onPress={handlePress}>
         <View style={themed($iconContainer)}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={themed($channelIcon)} resizeMode="cover" />
+          {imageUrl && !imageError ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={themed($channelIcon)}
+              resizeMode="cover"
+              onError={handleImageError}
+            />
           ) : (
             <View style={themed($placeholderIcon)}>
               <Text
-                text={name?.substring(0, 2).toUpperCase()}
+                text={name?.substring(0, 2).toUpperCase() || "??"}
                 style={{ color: theme.colors.textDim }}
               />
             </View>
@@ -189,43 +199,97 @@ export const ChannelListScreen: FC<ChannelListScreenProps> = observer(function C
 
   const playChannel = useCallback(
     (channel: any) => {
+      // Validate channel data
+      if (!channel) {
+        Alert.alert("Error", "Invalid channel data")
+        return
+      }
+
       setIsLoading(true)
       setTimeout(() => {
-        if (authenticationStore.authMethod === "m3u") {
-          navigation.navigate("Player", {
-            url: channel.url,
-            title: channel.name,
-            isLive: true,
-            channel,
-          })
-        } else {
-          if (channelStore.selectedContentType === "series") {
-            // Navigate to Series Details screen
-            navigation.navigate("SeriesDetails", { series: channel })
-            setIsLoading(false)
-            return
+        try {
+          if (authenticationStore.authMethod === "m3u") {
+            if (!channel.url) {
+              Alert.alert("Error", "Channel URL is missing")
+              setIsLoading(false)
+              return
+            }
+            navigation.navigate("Player", {
+              url: channel.url,
+              title: channel.name || "Unknown Channel",
+              isLive: true,
+              channel,
+            })
+          } else {
+            if (channelStore.selectedContentType === "series") {
+              // Validate series data
+              if (!channel.series_id) {
+                Alert.alert("Error", "Invalid series information")
+                setIsLoading(false)
+                return
+              }
+              // Navigate to Series Details screen
+              navigation.navigate("SeriesDetails", { series: channel })
+              setIsLoading(false)
+              return
+            }
+
+            // Validate required fields for Xtream
+            if (
+              !authenticationStore.serverUrl ||
+              !authenticationStore.username ||
+              !authenticationStore.password
+            ) {
+              Alert.alert("Error", "Authentication credentials are missing")
+              setIsLoading(false)
+              return
+            }
+
+            if (!channel.stream_id) {
+              Alert.alert("Error", "Stream ID is missing")
+              setIsLoading(false)
+              return
+            }
+
+            let streamUrl = ""
+            const isLive =
+              channelStore.selectedContentType === "live" ||
+              channelStore.selectedContentType === "radio"
+
+            if (isLive) {
+              const extension =
+                channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
+              streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
+            } else if (channelStore.selectedContentType === "vod") {
+              const extension = channel.container_extension || "mp4"
+              streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
+            } else {
+              Alert.alert("Error", "Unsupported content type")
+              setIsLoading(false)
+              return
+            }
+
+            if (!streamUrl) {
+              Alert.alert("Error", "Could not generate stream URL")
+              setIsLoading(false)
+              return
+            }
+
+            navigation.navigate("Player", {
+              url: streamUrl,
+              title: channel.name || channel.title || "Unknown",
+              isLive,
+              channel,
+            })
           }
-
-          let streamUrl = ""
-          const isLive =
-            channelStore.selectedContentType === "live" ||
-            channelStore.selectedContentType === "radio"
-
-          if (isLive) {
-            const extension =
-              channelStore.rootStore.settingsStore.streamFormat === "m3u8" ? ".m3u8" : ""
-            streamUrl = `${authenticationStore.serverUrl}/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}${extension}`
-          } else if (channelStore.selectedContentType === "vod") {
-            const extension = channel.container_extension || "mp4"
-            streamUrl = `${authenticationStore.serverUrl}/movie/${authenticationStore.username}/${authenticationStore.password}/${channel.stream_id}.${extension}`
-          }
-
-          navigation.navigate("Player", {
-            url: streamUrl,
-            title: channel.name || channel.title,
-            isLive,
-            channel,
-          })
+        } catch (error: any) {
+          console.error("Error playing channel:", error)
+          Alert.alert(
+            "Error",
+            error?.message || "An error occurred while trying to play the channel",
+          )
+          setIsLoading(false)
+          return
         }
         setTimeout(() => setIsLoading(false), 500)
       }, 100)

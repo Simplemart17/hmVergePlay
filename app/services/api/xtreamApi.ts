@@ -32,11 +32,23 @@ export class XtreamApi {
   apisauce: ApisauceInstance
 
   constructor(baseURL: string) {
+    // Validate and normalize baseURL
+    let normalizedBaseURL = baseURL.trim()
+
+    // Ensure URL has protocol
+    if (!normalizedBaseURL.startsWith("http://") && !normalizedBaseURL.startsWith("https://")) {
+      normalizedBaseURL = `http://${normalizedBaseURL}`
+    }
+
+    // Remove trailing slashes
+    normalizedBaseURL = normalizedBaseURL.replace(/\/+$/, "")
+
     this.apisauce = create({
-      baseURL,
-      timeout: 15000,
+      baseURL: normalizedBaseURL,
+      timeout: 20000, // Increased timeout for better reliability
       headers: {
-        Accept: "application/json",
+        "Accept": "application/json",
+        "User-Agent": "HMVergePlay/1.0",
       },
     })
   }

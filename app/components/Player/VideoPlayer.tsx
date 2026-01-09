@@ -280,7 +280,26 @@ export const VideoPlayer = ({
             onEnd={onEnd}
             onError={(e) => {
               setIsLoading(false)
+              console.error("Video player error:", e)
+
+              // Log more details for debugging
+              if (e?.error) {
+                console.error("Error details:", {
+                  code: e.error.code,
+                  domain: e.error.domain,
+                  localizedDescription: e.error.localizedDescription,
+                })
+              }
+
               if (onError) onError(e)
+            }}
+            onBuffer={(data) => {
+              // Handle buffering state - could be used for better UX
+              if (data.isBuffering) {
+                setIsLoading(true)
+              } else {
+                setIsLoading(false)
+              }
             }}
             resizeMode={getResizeMode()}
             paused={paused}
