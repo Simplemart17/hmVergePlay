@@ -149,6 +149,13 @@ export const ChannelStoreModel = types
       }
 
       try {
+        // Validate server URL before creating API instance
+        if (!authStore.serverUrl) {
+          console.error("Server URL is missing")
+          store.isLoading = false
+          return
+        }
+
         const api = new XtreamApi(authStore.serverUrl)
 
         // 1. Fetch Categories
@@ -159,6 +166,11 @@ export const ChannelStoreModel = types
           categoriesResult = yield api.getVODCategories(authStore.username, authStore.password)
         } else if (type === "series") {
           categoriesResult = yield api.getSeriesCategories(authStore.username, authStore.password)
+        }
+
+        // Log category fetch result for debugging
+        if (categoriesResult && categoriesResult.kind !== "ok") {
+          console.error(`Failed to fetch ${type} categories:`, categoriesResult)
         }
 
         if (categoriesResult && categoriesResult.kind === "ok") {
@@ -180,54 +192,67 @@ export const ChannelStoreModel = types
           channelsResult = yield api.getSeries(authStore.username, authStore.password)
         }
 
+        // Log channels fetch result for debugging
+        if (channelsResult && channelsResult.kind !== "ok") {
+          console.error(`Failed to fetch ${type} channels:`, channelsResult)
+        }
+
         if (channelsResult && channelsResult.kind === "ok") {
-          let channels = channelsResult.data
+          // Ensure channelsResult.data is an array
+          let channels = Array.isArray(channelsResult.data) ? channelsResult.data : []
 
           // Normalize data in batches to avoid blocking the main thread
           // Process in chunks to allow UI updates between batches
           const BATCH_SIZE = 1000
           const normalizedChannels: any[] = []
 
-          for (let i = 0; i < channels.length; i += BATCH_SIZE) {
-            const batch = channels.slice(i, i + BATCH_SIZE)
-            const normalizedBatch = batch.map((c: any) => ({
-              ...c,
-              // Ensure category_id is a string
-              category_id: c.category_id ? String(c.category_id) : undefined,
-              // Ensure IDs are numbers
-              stream_id: c.stream_id ? Number(c.stream_id) : undefined,
-              series_id: c.series_id ? Number(c.series_id) : undefined,
-              num: c.num ? Number(c.num) : undefined,
-              // Ensure rating is valid
-              rating: c.rating === "" ? null : c.rating,
-            }))
-            normalizedChannels.push(...normalizedBatch)
+          if (channels.length > 0) {
+            for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+              const batch = channels.slice(i, i + BATCH_SIZE)
+              const normalizedBatch = batch.map((c: any) => ({
+                ...c,
+                // Ensure category_id is a string
+                category_id: c.category_id ? String(c.category_id) : undefined,
+                // Ensure IDs are numbers
+                stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+                series_id: c.series_id ? Number(c.series_id) : undefined,
+                num: c.num ? Number(c.num) : undefined,
+                // Ensure rating is valid
+                rating: c.rating === "" ? null : c.rating,
+              }))
+              normalizedChannels.push(...normalizedBatch)
 
-            // Yield control every batch to prevent UI freezing
-            if (i + BATCH_SIZE < channels.length) {
-              yield Promise.resolve()
+              // Yield control every batch to prevent UI freezing
+              if (i + BATCH_SIZE < channels.length) {
+                yield Promise.resolve()
+              }
             }
+
+            channels = normalizedChannels
+
+            if (type === "live") {
+              // Filter out explicit radio streams from Live view
+              channels = channels.filter(
+                (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
+              )
+            } else if (type === "radio") {
+              // Prefer explicit radio streams, but fallback if none found (e.g. they might be marked live)
+              const radioChannels = channels.filter(
+                (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
+              )
+              if (radioChannels.length > 0) {
+                channels = radioChannels
+              }
+            }
+            // For VOD and Series, pass through all results from the API without filtering
           }
 
-          channels = normalizedChannels
-
-          if (type === "live") {
-            // Filter out explicit radio streams from Live view
-            channels = channels.filter(
-              (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
-            )
-          } else if (type === "radio") {
-            // Prefer explicit radio streams, but fallback if none found (e.g. they might be marked live)
-            const radioChannels = channels.filter(
-              (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
-            )
-            if (radioChannels.length > 0) {
-              channels = radioChannels
-            }
-          }
-          // For VOD and Series, pass through all results from the API
           store.setChannels(channels)
           store.setHasFetchedAllChannels(true)
+        } else {
+          // Handle error case - set empty array to clear previous data
+          store.setChannels([])
+          console.error("Failed to load content:", channelsResult)
         }
       } catch (e) {
         console.error(e)
@@ -274,10 +299,21 @@ export const ChannelStoreModel = types
       const rootStore = getRoot(store) as any
       const authStore = rootStore.authenticationStore
 
-      if (!authStore || !authStore.serverUrl || !authStore.username || !authStore.password) return
+      if (!authStore || !authStore.serverUrl || !authStore.username || !authStore.password) {
+        console.error("Missing authentication credentials for fetchChannels")
+        store.isLoading = false
+        return
+      }
 
       store.isLoading = true
       try {
+        // Validate server URL before creating API instance
+        if (!authStore.serverUrl || typeof authStore.serverUrl !== "string") {
+          console.error("Invalid server URL:", authStore.serverUrl)
+          store.isLoading = false
+          return
+        }
+
         const api = new XtreamApi(authStore.serverUrl)
         let result
 
@@ -290,52 +326,62 @@ export const ChannelStoreModel = types
         }
 
         if (result && result.kind === "ok") {
-          // If Radio is selected, filter for radio streams if possible
-          // Note: Xtream often uses stream_type 'live' for both, but sometimes 'radio'.
-          // We'll trust the category or filter if stream_type is available.
-          let channels = result.data
+          // Ensure result.data is an array
+          let channels = Array.isArray(result.data) ? result.data : []
 
           // Normalize data in batches to avoid blocking the main thread
           const BATCH_SIZE = 1000
           const normalizedChannels: any[] = []
 
-          for (let i = 0; i < channels.length; i += BATCH_SIZE) {
-            const batch = channels.slice(i, i + BATCH_SIZE)
-            const normalizedBatch = batch.map((c: any) => ({
-              ...c,
-              category_id: c.category_id ? String(c.category_id) : categoryId || undefined,
-              stream_id: c.stream_id ? Number(c.stream_id) : undefined,
-              series_id: c.series_id ? Number(c.series_id) : undefined,
-              num: c.num ? Number(c.num) : undefined,
-              rating: c.rating === "" ? null : c.rating,
-            }))
-            normalizedChannels.push(...normalizedBatch)
+          if (channels.length > 0) {
+            for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+              const batch = channels.slice(i, i + BATCH_SIZE)
+              const normalizedBatch = batch.map((c: any) => ({
+                ...c,
+                // Preserve original category_id if it exists, only use categoryId as fallback when fetching specific category
+                category_id: c.category_id
+                  ? String(c.category_id)
+                  : categoryId
+                    ? String(categoryId)
+                    : undefined,
+                stream_id: c.stream_id ? Number(c.stream_id) : undefined,
+                series_id: c.series_id ? Number(c.series_id) : undefined,
+                num: c.num ? Number(c.num) : undefined,
+                rating: c.rating === "" ? null : c.rating,
+              }))
+              normalizedChannels.push(...normalizedBatch)
 
-            // Yield control every batch to prevent UI freezing
-            if (i + BATCH_SIZE < channels.length) {
-              yield Promise.resolve()
+              // Yield control every batch to prevent UI freezing
+              if (i + BATCH_SIZE < channels.length) {
+                yield Promise.resolve()
+              }
             }
+
+            channels = normalizedChannels
+
+            if (store.selectedContentType === "live") {
+              channels = channels.filter(
+                (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
+              )
+            } else if (store.selectedContentType === "radio") {
+              const radioChannels = channels.filter(
+                (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
+              )
+              if (radioChannels.length > 0) {
+                channels = radioChannels
+              }
+            }
+            // For VOD and Series, pass through all results without filtering
           }
 
-          channels = normalizedChannels
-
-          if (store.selectedContentType === "live") {
-            channels = channels.filter(
-              (c: any) => c.stream_type !== "radio" && c.stream_type !== "radio_streams",
-            )
-          } else if (store.selectedContentType === "radio") {
-            const radioChannels = channels.filter(
-              (c: any) => c.stream_type === "radio" || c.stream_type === "radio_streams",
-            )
-            if (radioChannels.length > 0) {
-              channels = radioChannels
-            }
-          }
-          // For VOD and Series, pass through all results
           store.setChannels(channels)
           if (!categoryId) {
             store.setHasFetchedAllChannels(true)
           }
+        } else {
+          // Handle error case - set empty array to clear previous data
+          store.setChannels([])
+          console.error("Failed to fetch channels:", result)
         }
       } catch (e) {
         console.error(e)
