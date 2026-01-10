@@ -83,7 +83,7 @@ export const VideoPlayer = ({
   // Only request brightness permission on mount, no direct call to native modules on mount to avoid overload
   useEffect(() => {
     // Initial brightness
-    ; (async () => {
+    ;(async () => {
       try {
         const { status } = await Brightness.requestPermissionsAsync()
         if (status === "granted") {
@@ -270,7 +270,7 @@ export const VideoPlayer = ({
               uri: source,
               headers: {
                 ...(userAgent ? { "User-Agent": userAgent } : {}),
-                ...(referrer ? { "Referrer": referrer } : {}),
+                ...(referrer ? { Referrer: referrer } : {}),
               },
             }}
             style={getVideoStyle()}
@@ -280,16 +280,38 @@ export const VideoPlayer = ({
             onEnd={onEnd}
             onError={(e) => {
               setIsLoading(false)
+              console.error("Video player error:", e)
+
+              // Log more details for debugging
+              if (e?.error) {
+                console.error("Error details:", {
+                  code: e.error.code,
+                  domain: e.error.domain,
+                  localizedDescription: e.error.localizedDescription,
+                })
+              }
+
               if (onError) onError(e)
+            }}
+            onBuffer={(data) => {
+              // Handle buffering state - could be used for better UX
+              if (data.isBuffering) {
+                setIsLoading(true)
+              } else {
+                setIsLoading(false)
+              }
             }}
             resizeMode={getResizeMode()}
             paused={paused}
+            minLoadRetryCount={3}
             bufferConfig={{
-              minBufferMs: 15000,
-              maxBufferMs: 50000,
-              bufferForPlaybackMs: 2500,
-              bufferForPlaybackAfterRebufferMs: 5000,
+              minBufferMs: isLive ? 10000 : 15000,
+              maxBufferMs: isLive ? 30000 : 60000,
+              bufferForPlaybackMs: isLive ? 2000 : 5000,
+              bufferForPlaybackAfterRebufferMs: isLive ? 3000 : 10000,
             }}
+            maxBitRate={isLive ? undefined : 10000000}
+            preferredForwardBufferDuration={isLive ? 5 : 30}
           />
         </View>
       </TouchableWithoutFeedback>

@@ -31,12 +31,7 @@ export const AuthenticationStoreModel = types
     },
   }))
   .actions((store) => {
-    const login = flow(function* (
-      url: string,
-      user: string,
-      pass: string,
-      playlistName?: string,
-    ) {
+    const login = flow(function* (url: string, user: string, pass: string, playlistName?: string) {
       store.isLoading = true
       store.error = undefined
 
@@ -60,16 +55,21 @@ export const AuthenticationStoreModel = types
             )
 
             if (!existing) {
+              const playlistId = `${Date.now()}`
               rootStore.playlistStore.addPlaylist({
-                id: `${Date.now()}`,
-                name:
-                  playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
+                id: playlistId,
+                name: playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
                 type: "xtream",
                 username: user,
                 password: pass,
                 serverUrl: url,
                 createdAt: Date.now(),
               })
+              // Set as active playlist
+              rootStore.playlistStore.setActivePlaylist(playlistId)
+            } else {
+              // Set existing playlist as active
+              rootStore.playlistStore.setActivePlaylist(existing.id)
             }
           }
         } else {
@@ -103,14 +103,19 @@ export const AuthenticationStoreModel = types
             const existing = rootStore.playlistStore.playlists.find((p: any) => p.m3uUrl === url)
 
             if (!existing) {
+              const playlistId = `${Date.now()}`
               rootStore.playlistStore.addPlaylist({
-                id: `${Date.now()}`,
-                name:
-                  playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
+                id: playlistId,
+                name: playlistName || `Playlist ${rootStore.playlistStore.playlists.length + 1}`,
                 type: "m3u",
                 m3uUrl: url,
                 createdAt: Date.now(),
               })
+              // Set as active playlist
+              rootStore.playlistStore.setActivePlaylist(playlistId)
+            } else {
+              // Set existing playlist as active
+              rootStore.playlistStore.setActivePlaylist(existing.id)
             }
           }
         } else {

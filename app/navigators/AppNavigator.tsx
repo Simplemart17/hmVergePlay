@@ -21,6 +21,7 @@ import { FavoritesScreen } from "../screens/FavoritesScreen/FavoritesScreen"
 import { LoginScreen } from "../screens/LoginScreen"
 import { PlayerScreen } from "../screens/PlayerScreen/PlayerScreen"
 import { PlaylistSelectionScreen } from "../screens/PlaylistSelectionScreen"
+import { SeriesDetailsScreen } from "../screens/SeriesDetailsScreen"
 import { SettingsScreen } from "../screens/SettingsScreen"
 import { useAppTheme } from "../theme/context"
 
@@ -67,6 +68,7 @@ const AppStack = observer(() => {
           <Stack.Screen name="Player" component={PlayerScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="Downloads" component={DownloadsScreen} />
+          <Stack.Screen name="SeriesDetails" component={SeriesDetailsScreen} />
         </Stack.Group>
       ) : (
         <Stack.Group>

@@ -24,6 +24,31 @@ export async function setupRootStore(rootStore: RootStore) {
     // instead of crashing.
   }
 
+  // Migration: Ensure activePlaylistId is set if playlists exist
+  // This fixes existing users who had playlists added before the activePlaylistId was being set
+  const playlistStore = rootStore.playlistStore
+  if (playlistStore.playlists.length > 0 && !playlistStore.activePlaylistId) {
+    // Find the appropriate playlist based on current auth method
+    const authStore = rootStore.authenticationStore
+    let matchingPlaylist = null
+
+    if (authStore.authMethod === "m3u" && authStore.m3uUrl) {
+      matchingPlaylist = playlistStore.playlists.find((p) => p.m3uUrl === authStore.m3uUrl)
+    } else if (authStore.authMethod === "xtream" && authStore.serverUrl) {
+      matchingPlaylist = playlistStore.playlists.find(
+        (p) => p.serverUrl === authStore.serverUrl && p.username === authStore.username,
+      )
+    }
+
+    // If we found a matching playlist, set it as active
+    // Otherwise, just use the first playlist
+    if (matchingPlaylist) {
+      playlistStore.setActivePlaylist(matchingPlaylist.id)
+    } else if (playlistStore.playlists.length > 0) {
+      playlistStore.setActivePlaylist(playlistStore.playlists[0].id)
+    }
+  }
+
   // track changes & save to storage
   onSnapshot(rootStore, (snapshot) => save(ROOT_STATE_STORAGE_KEY, snapshot))
 
